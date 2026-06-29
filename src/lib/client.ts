@@ -1,0 +1,76 @@
+"use client";
+const TOKEN_KEY = "am360_token";
+export const tokenStore = {
+  get: () => (typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null),
+  set: (t: string | null) => {
+    if (typeof window === "undefined") return;
+    t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
+  },
+};
+
+async function request(path: string, options: RequestInit = {}, withAuth = true) {
+  const headers: any = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (withAuth) { const t = tokenStore.get(); if (t) headers.Authorization = `Bearer ${t}`; }
+  const res = await fetch(`/api${path}`, { ...options, headers });
+  const text = await res.text();
+  let data: any = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) throw new Error((data && data.detail) || `Request failed (${res.status})`);
+  return data;
+}
+const body = (b: any) => ({ body: JSON.stringify(b) });
+
+export const api = {
+  registerOwner: (b: any) => request("/auth/register-owner", { method: "POST", ...body(b) }, false),
+  login: (b: any) => request("/auth/login", { method: "POST", ...body(b) }, false),
+  me: () => request("/auth/me"),
+  getAcademy: () => request("/academy"),
+  updateAcademy: (b: any) => request("/academy", { method: "PUT", ...body(b) }),
+  listBranches: () => request("/branches"),
+  createBranch: (b: any) => request("/branches", { method: "POST", ...body(b) }),
+  updateBranch: (id: string, b: any) => request(`/branches/${id}`, { method: "PUT", ...body(b) }),
+  deleteBranch: (id: string) => request(`/branches/${id}`, { method: "DELETE" }),
+  listTrainers: () => request("/trainers"),
+  createTrainer: (b: any) => request("/trainers", { method: "POST", ...body(b) }),
+  updateTrainer: (id: string, b: any) => request(`/trainers/${id}`, { method: "PUT", ...body(b) }),
+  deleteTrainer: (id: string) => request(`/trainers/${id}`, { method: "DELETE" }),
+  listStudents: (bid?: string) => request(`/students${bid ? `?branch_id=${bid}` : ""}`),
+  createStudent: (b: any) => request("/students", { method: "POST", ...body(b) }),
+  updateStudent: (id: string, b: any) => request(`/students/${id}`, { method: "PUT", ...body(b) }),
+  deleteStudent: (id: string) => request(`/students/${id}`, { method: "DELETE" }),
+  markAttendance: (b: any) => request("/attendance/mark", { method: "POST", ...body(b) }),
+  getAttendance: (bid: string, date: string) => request(`/attendance?branch_id=${bid}&date=${date}`),
+  getSession: (bid: string, date: string) => request(`/sessions?branch_id=${bid}&date=${date}`),
+  listSchedules: (p: { branch_id?: string; trainer_id?: string } = {}) => {
+    const q = new URLSearchParams(); if (p.branch_id) q.set("branch_id", p.branch_id); if (p.trainer_id) q.set("trainer_id", p.trainer_id);
+    return request(`/schedules${q.toString() ? `?${q}` : ""}`);
+  },
+  createSchedule: (b: any) => request("/schedules", { method: "POST", ...body(b) }),
+  updateSchedule: (id: string, b: any) => request(`/schedules/${id}`, { method: "PUT", ...body(b) }),
+  deleteSchedule: (id: string) => request(`/schedules/${id}`, { method: "DELETE" }),
+  listFees: (bid?: string) => request(`/fees${bid ? `?branch_id=${bid}` : ""}`),
+  createFee: (b: any) => request("/fees", { method: "POST", ...body(b) }),
+  payFee: (id: string, b: any) => request(`/fees/${id}/pay`, { method: "POST", ...body(b) }),
+  deleteFee: (id: string) => request(`/fees/${id}`, { method: "DELETE" }),
+  dashboard: () => request("/analytics/dashboard"),
+  // --- PRD additions ---
+  changePassword: (b: any) => request("/auth/change-password", { method: "POST", ...body(b) }),
+  resetTrainerPassword: (id: string) => request(`/trainers/${id}/reset-password`, { method: "POST", ...body({}) }),
+  transferStudent: (id: string, branch_id: string) => request(`/students/${id}/transfer`, { method: "POST", ...body({ branch_id }) }),
+  listAudit: (skip = 0, limit = 50) => request(`/audit?skip=${skip}&limit=${limit}`),
+  uploadSign: (folder = "am360") => request("/uploads/sign", { method: "POST", ...body({ folder }) }),
+};
+
+// Upload an image to Cloudinary (signed) and return its hosted URL. No base64 in the DB.
+export async function uploadImage(file: File, folder = "am360"): Promise<string> {
+  const sig = await api.uploadSign(folder);
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("api_key", sig.api_key);
+  fd.append("timestamp", String(sig.timestamp));
+  fd.append("signature", sig.signature);
+  fd.append("folder", sig.folder);
+  const res = await fetch(sig.upload_url, { method: "POST", body: fd });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error(data?.error?.message || "Upload failed");
+  return data.secure_url as string;
+}

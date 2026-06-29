@@ -1,0 +1,169 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+// snake_case scalar fields + string dates keep the JSON API contract stable.
+
+model Academy {
+  id                   String  @id @default(uuid())
+  name                 String
+  logo_url             String?
+  description          String  @default("")
+  owner_id             String
+  subscription_plan    String  @default("free")     // free | pro
+  subscription_status  String  @default("active")   // active | expired
+  subscription_expires String?
+  created_at           String
+}
+
+model User {
+  id                   String   @id @default(uuid())
+  academy_id           String
+  name                 String
+  email                String   @unique
+  username             String?  @unique
+  password             String
+  role                 String                        // owner | admin | trainer
+  branch_id            String?                       // legacy primary branch
+  branch_ids           String[] @default([])
+  phone                String   @default("")
+  address              String   @default("")
+  photo_url            String?
+  joining_date         String?
+  status               String   @default("active")   // active | inactive
+  must_change_password Boolean  @default(false)
+  created_at           String
+
+  @@index([academy_id, role])
+}
+
+model Branch {
+  id            String  @id @default(uuid())
+  academy_id    String
+  name          String
+  branch_code   String?
+  address       String  @default("")
+  phone         String  @default("")
+  working_hours String  @default("")
+  status        String  @default("active")           // active | inactive
+  created_at    String
+
+  @@index([academy_id])
+}
+
+model Student {
+  id                String  @id @default(uuid())
+  academy_id        String
+  name              String
+  parent_name       String  @default("")
+  phone             String  @default("")
+  alt_mobile        String  @default("")
+  email             String  @default("")
+  address           String  @default("")
+  dob               String?
+  gender            String?
+  admission_date    String?
+  branch_id         String
+  batch             String  @default("")
+  course            String  @default("")
+  photo_url         String?
+  emergency_contact String  @default("")
+  medical_notes     String  @default("")
+  monthly_fee       Float   @default(0)
+  join_date         String
+  notes             String  @default("")
+  status            String  @default("active")
+  created_at        String
+
+  @@index([academy_id, branch_id])
+  @@index([academy_id, status])
+}
+
+model Attendance {
+  id         String @id @default(uuid())
+  academy_id String
+  branch_id  String
+  student_id String
+  date       String
+  status     String                                  // present | absent | late
+  marked_by  String
+  marked_at  String
+
+  @@index([academy_id, branch_id, date])
+  @@index([academy_id, marked_by, date])
+}
+
+model ClassSession {
+  id         String   @id @default(uuid())
+  academy_id String
+  branch_id  String
+  date       String
+  photos     String[] @default([])                   // Cloudinary URLs
+  notes      String   @default("")
+  marked_by  String
+  marked_at  String
+
+  @@unique([academy_id, branch_id, date])
+}
+
+model Fee {
+  id          String    @id @default(uuid())
+  academy_id  String
+  student_id  String
+  type        String    @default("monthly")          // monthly | admission
+  amount      Float                                   // total due
+  paid_amount Float     @default(0)
+  month       String
+  status      String    @default("pending")          // paid | pending | overdue
+  due_date    String?
+  note        String    @default("")
+  created_at  String
+  payments    Payment[]
+
+  @@index([academy_id, student_id])
+}
+
+model Payment {
+  id          String  @id @default(uuid())
+  academy_id  String
+  fee_id      String
+  student_id  String
+  amount      Float
+  method      String  @default("cash")
+  paid_date   String
+  note        String  @default("")
+  recorded_by String
+  created_at  String
+  fee         Fee     @relation(fields: [fee_id], references: [id], onDelete: Cascade)
+
+  @@index([academy_id, student_id])
+}
+
+model Schedule {
+  id          String  @id @default(uuid())
+  academy_id  String
+  branch_id   String
+  trainer_id  String?
+  title       String
+  day_of_week Int
+  start_time  String
+  end_time    String
+  notes       String  @default("")
+  created_at  String
+
+  @@index([academy_id, branch_id])
+  @@index([academy_id, trainer_id])
+}
+
+model AuditLog {
+  id         String @id @default(uuid())
+  academy_id String
+  actor_id   String
+  actor_name String
+  action     String                                  // e.g. student.create
+  entity     String
+  entity_id  String
+  meta       Json?
+  created_at String
+
+  @@index([academy_id, created_at])
+}
