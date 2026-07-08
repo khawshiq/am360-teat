@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
-import { auth, json, fail, nowIso, todayStr, trainerBranchIds } from "@/lib/api";
+import { auth, json, fail, nowIso, todayStr, trainerBranchIds, planError } from "@/lib/api";
+import { assertWithinPlan } from "@/lib/plan";
 import { audit } from "@/lib/audit";
 
 const STUDENT_FIELDS = ["name","parent_name","phone","alt_mobile","email","address","dob","gender","admission_date","batch","course","photo_url","emergency_contact","medical_notes","monthly_fee","join_date","notes"];
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   if (u.role === "trainer" && !trainerBranchIds(u).includes(b.branch_id))
     return fail(403, "Trainers can only add students to their assigned branches");
   if (!(await prisma.branch.findFirst({ where: { id: b.branch_id, academy_id: u.academy_id } }))) return fail(400, "Invalid branch");
+  try { await assertWithinPlan(u.academy_id, "students"); } catch (e) { const r = planError(e); if (r) return r; throw e; }
   const data: any = { academy_id: u.academy_id, branch_id: b.branch_id, status: "active", created_at: nowIso(),
     join_date: b.join_date || todayStr(), admission_date: b.admission_date || todayStr() };
   for (const k of STUDENT_FIELDS) if (b[k] != null) data[k] = b[k];

@@ -14,7 +14,16 @@ async function request(path: string, options: RequestInit = {}, withAuth = true)
   const res = await fetch(`/api${path}`, { ...options, headers });
   const text = await res.text();
   let data: any = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  if (!res.ok) throw new Error((data && data.detail) || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err: any = new Error((data && data.detail) || `Request failed (${res.status})`);
+    err.status = res.status;
+    if (data && typeof data === "object") { err.code = data.code; err.resource = data.resource; err.limit = data.limit; }
+    // Plan-limit breaches (402) fire a global event so a single UpgradeModal can react,
+    // no matter which form triggered the create. The error still throws for local handling.
+    if (err.code === "PLAN_LIMIT" && typeof window !== "undefined")
+      window.dispatchEvent(new CustomEvent("am360:plan-limit", { detail: { resource: err.resource, limit: err.limit, message: err.message } }));
+    throw err;
+  }
   return data;
 }
 const body = (b: any) => ({ body: JSON.stringify(b) });
@@ -55,6 +64,18 @@ export const api = {
   payFee: (id: string, b: any) => request(`/fees/${id}/pay`, { method: "POST", ...body(b) }),
   deleteFee: (id: string) => request(`/fees/${id}`, { method: "DELETE" }),
   dashboard: () => request("/analytics/dashboard"),
+  // --- Courses & Batches ---
+  listCourses: (includeInactive = false) => request(`/courses${includeInactive ? "?include_inactive=1" : ""}`),
+  createCourse: (b: any) => request("/courses", { method: "POST", ...body(b) }),
+  updateCourse: (id: string, b: any) => request(`/courses/${id}`, { method: "PUT", ...body(b) }),
+  deleteCourse: (id: string) => request(`/courses/${id}`, { method: "DELETE" }),
+  listBatches: (p: { branch_id?: string; course_id?: string } = {}) => {
+    const q = new URLSearchParams(); if (p.branch_id) q.set("branch_id", p.branch_id); if (p.course_id) q.set("course_id", p.course_id);
+    return request(`/batches${q.toString() ? `?${q}` : ""}`);
+  },
+  createBatch: (b: any) => request("/batches", { method: "POST", ...body(b) }),
+  updateBatch: (id: string, b: any) => request(`/batches/${id}`, { method: "PUT", ...body(b) }),
+  deleteBatch: (id: string) => request(`/batches/${id}`, { method: "DELETE" }),
   // --- PRD additions ---
   changePassword: (b: any) => request("/auth/change-password", { method: "POST", ...body(b) }),
   resetTrainerPassword: (id: string) => request(`/trainers/${id}/reset-password`, { method: "POST", ...body({}) }),
