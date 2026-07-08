@@ -252,8 +252,8 @@ Mapped from the doc's 5 phases onto this stack. Each phase ends deployable on Ve
 
 | Phase | Doc phase | Deliverables | Key files |
 |---|---|---|---|
-| **P1 — Foundation & plan limits** | 1 (Architecture/DB/ERD/API) | This doc; `Plan` model + seed; `assertWithinPlan` guard wired into create routes; upgrade-popup on 402; Course & Batch models + CRUD + API | `prisma/schema.prisma`, `lib/plan.ts`, `api/courses`, `api/batches` |
-| **P2 — Super Admin** | 4 (Admin panel) | `PlatformUser` + `/api/admin/*`; superadmin login; academies management (activate/suspend/delete); plans management; platform analytics; announcements | `app/superadmin/*`, `api/admin/*`, `lib/rbac.ts` |
+| **P1 — Foundation & plan limits** ✅ done | 1 (Architecture/DB/ERD/API) | This doc; `Plan` model + seed; `assertWithinPlan` guard wired into create routes; upgrade-popup on 402; Course & Batch models + CRUD + API | `prisma/schema.prisma`, `lib/plan.ts`, `api/courses`, `api/batches` |
+| **P2 — Super Admin** ✅ done | 4 (Admin panel) | `PlatformUser` + `/api/admin/*`; superadmin login (env-seeded); academies management (make premium/suspend/delete); plans management; platform analytics; announcements; suspended academies blocked at tenant login | `app/superadmin/*`, `api/admin/*`, `lib/superauth.ts`, `lib/saclient.ts` |
 | **P3 — Reports & export** | — (top TODO) | Attendance/fees/trainer reports; CSV export (all), PDF export (Premium) | `lib/reports.ts`, `api/reports/*` |
 | **P4 — Subscriptions** | 4 | Razorpay orders + webhook; monthly/yearly/lifetime; auto plan up/downgrade; billing history (`Subscription`) | `api/subscription/*`, `lib/razorpay.ts` |
 | **P5 — Notifications & polish** | 5 (Testing/Docker/Deploy) | NotificationService (email/SMS/WhatsApp/push); fee reminders; finish Owner/Trainer UI (deactivate/transfer/reset buttons, full form fields); backup/restore (Premium); tests + deploy checklist | `lib/notify.ts`, `api/notifications`, UI wiring |

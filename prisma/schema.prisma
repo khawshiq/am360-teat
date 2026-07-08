@@ -15,10 +15,32 @@ model Academy {
   logo_url             String?
   description          String  @default("")
   owner_id             String
-  subscription_plan    String  @default("free")     // free | pro
+  subscription_plan    String  @default("free")     // free | premium
   subscription_status  String  @default("active")   // active | expired
   subscription_expires String?
+  status               String  @default("active")   // active | suspended  (set by Super Admin)
   created_at           String
+}
+
+// Platform-level Super Admin — sits above all academies. Seeded from env on first
+// login (SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD). Not tied to any academy.
+model PlatformUser {
+  id         String @id @default(uuid())
+  email      String @unique
+  name       String
+  password   String
+  created_at String
+}
+
+model Announcement {
+  id         String  @id @default(uuid())
+  title      String
+  body       String
+  academy_id String?                                 // null = broadcast to all academies
+  created_by String
+  created_at String
+
+  @@index([academy_id])
 }
 
 model User {
