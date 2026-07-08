@@ -3,10 +3,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth";
+import UpgradeModal from "@/components/UpgradeModal";
 
 const TABS = [
   ["Dashboard", "/admin"], ["Branches", "/admin/branches"],
-  ["Trainers", "/admin/trainers"], ["Audit", "/admin/audit"], ["Settings", "/admin/settings"],
+  ["Trainers", "/admin/trainers"], ["Courses", "/admin/courses"],
+  ["Audit", "/admin/audit"], ["Settings", "/admin/settings"],
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -32,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         ))}
       </nav>
       {children}
+      <UpgradeModal />
     </div>
   );
 }

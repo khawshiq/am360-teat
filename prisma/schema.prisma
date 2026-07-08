@@ -160,6 +160,47 @@ model Schedule {
   @@index([academy_id, trainer_id])
 }
 
+model Plan {
+  id            String  @id @default(uuid())
+  code          String  @unique                    // free | premium
+  name          String
+  max_branches  Int     @default(-1)               // -1 = unlimited
+  max_students  Int     @default(-1)
+  max_trainers  Int     @default(-1)
+  max_courses   Int     @default(-1)
+  features      Json?                               // { reports, export, messaging, backup }
+  price_monthly Float   @default(0)
+  price_yearly  Float   @default(0)
+  created_at    String
+}
+
+model Course {
+  id          String @id @default(uuid())
+  academy_id  String
+  name        String
+  description String @default("")
+  status      String @default("active")            // active | inactive
+  created_at  String
+
+  @@index([academy_id, status])
+}
+
+model Batch {
+  id         String  @id @default(uuid())
+  academy_id String
+  branch_id  String
+  course_id  String?
+  trainer_id String?
+  name       String
+  start_time String  @default("")
+  end_time   String  @default("")
+  status     String  @default("active")            // active | inactive
+  created_at String
+
+  @@index([academy_id, branch_id])
+  @@index([academy_id, status])
+}
+
 model AuditLog {
   id         String @id @default(uuid())
   academy_id String

@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
-import { adminAuth, json, fail, nowIso } from "@/lib/api";
+import { adminAuth, json, fail, nowIso, planError } from "@/lib/api";
+import { assertWithinPlan } from "@/lib/plan";
 import { hashPassword, stripPassword } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 
@@ -14,6 +15,7 @@ export async function GET(req: Request) {
 }
 export async function POST(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
+  try { await assertWithinPlan(a.user.academy_id, "trainers"); } catch (e) { const r = planError(e); if (r) return r; throw e; }
   const b = await req.json();
   if (await prisma.user.findUnique({ where: { email: b.email } })) return fail(400, "Email already registered");
   const bids: string[] = [...(b.branch_ids || [])];
