@@ -8,6 +8,7 @@ type AuthCtx = {
   login: (e: string, p: string) => Promise<void>;
   register: (b: any) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 };
 const Ctx = createContext<AuthCtx>({} as AuthCtx);
 export const useAuth = () => useContext(Ctx);
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => afterAuth(await api.login({ email, password }));
   const register = async (b: any) => afterAuth(await api.registerOwner(b));
   const logout = () => { tokenStore.set(null); setUser(null); router.push("/login"); };
+  const refreshUser = async () => { setUser(await api.me()); };
 
-  return <Ctx.Provider value={{ user, loading, login, register, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, register, logout, refreshUser }}>{children}</Ctx.Provider>;
 }

@@ -35,3 +35,10 @@ button:disabled { opacity: 0.5; cursor: default; }
   padding: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
 .badge { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--panel2); }
 .badge.paid { color: var(--ok); } .badge.pending { color: var(--warn); } .badge.overdue { color: var(--danger); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: grid; place-items: center;
+  padding: 24px; z-index: 100; overflow-y: auto; }
+.modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+  max-width: 560px; width: 100%; max-height: calc(100vh - 48px); overflow-y: auto; }
+.lightbox-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: grid; place-items: center;
+  padding: 24px; z-index: 200; cursor: zoom-out; }
+.lightbox-overlay img { max-width: 100%; max-height: 100%; border-radius: 8px; }
