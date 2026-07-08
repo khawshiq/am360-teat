@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// snake_case scalar fields + string dates keep the JSON API contract stable.
+// snake_case scalar fields + string dates keep the JSON API contract stable. new
 
 model Academy {
   id                   String  @id @default(uuid())
