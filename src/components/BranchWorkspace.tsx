@@ -1,6 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { api, uploadImage } from "@/lib/client";
+import { api } from "@/lib/client";
+import { useImageUpload } from "@/lib/useImageUpload";
+import { cld } from "@/lib/cloudinary";
+import Modal from "./Modal";
+import Pager, { usePager } from "./Pager";
+import { downloadCsv } from "@/lib/csv";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 type Status = "present" | "absent" | "late";
@@ -8,14 +13,17 @@ const cycle = (s?: Status): Status => (s === "present" ? "absent" : s === "absen
 const STATUS_COLOR: Record<Status, string> = { present: "var(--ok)", absent: "var(--danger)", late: "var(--warn)" };
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file); });
-}
+const emptyStudentForm = {
+  name: "", phone: "", monthly_fee: "", parent_name: "", alt_mobile: "", email: "", address: "",
+  dob: "", gender: "", admission_date: "", batch: "", course: "", photo_url: "",
+  emergency_contact: "", medical_notes: "", notes: "", status: "active",
+};
 
 export default function BranchWorkspace({ branchId, isAdmin }: { branchId: string; isAdmin: boolean }) {
   const TABS = ["students", "attendance", "fees", "schedule"] as const;
   const [tab, setTab] = useState<(typeof TABS)[number]>("attendance");
   const [branch, setBranch] = useState<any>(null);
+  const [allBranches, setAllBranches] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [fees, setFees] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -23,75 +31,158 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   const [attendance, setAttendance] = useState<Record<string, Status>>({});
   const [photos, setPhotos] = useState<string[]>([]);
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const today = todayStr();
+  const [viewDate, setViewDate] = useState(today);
+  const isToday = viewDate === today;
+  const [showInactiveStudents, setShowInactiveStudents] = useState(false);
 
   const load = async () => {
     setErr("");
     try {
-      const [branches, ss, att, sess, sch] = await Promise.all([
-        api.listBranches(), api.listStudents(branchId),
-        api.getAttendance(branchId, today), api.getSession(branchId, today),
+      const [branches, ss, sch] = await Promise.all([
+        api.listBranches(), api.listStudents(branchId, showInactiveStudents),
         api.listSchedules({ branch_id: branchId }),
       ]);
       setBranch(branches.find((b: any) => b.id === branchId));
+      setAllBranches(branches);
       setStudents(ss); setSchedules(sch);
+    } catch (e: any) { setErr(e.message); }
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [branchId, showInactiveStudents]);
+
+  const loadFeesTrainers = async () => {
+    try {
+      const [fs, trs] = await Promise.all([
+        api.listFees(branchId).catch(() => []),
+        isAdmin ? api.listTrainers().catch(() => []) : Promise.resolve([]),
+      ]);
+      setFees(fs);
+      if (isAdmin) setTrainers(trs);
+    } catch { /* individual calls already fall back to [] above */ }
+  };
+  useEffect(() => { loadFeesTrainers(); /* eslint-disable-next-line */ }, [branchId, isAdmin]);
+
+  const [attendanceDirty, setAttendanceDirty] = useState(false);
+  const loadAttendance = async () => {
+    try {
+      const [att, sess] = await Promise.all([api.getAttendance(branchId, viewDate), api.getSession(branchId, viewDate)]);
       const m: Record<string, Status> = {}; for (const r of att) m[r.student_id] = r.status; setAttendance(m);
       setPhotos(sess?.photos || []);
-      if (isAdmin) {
-        const [fs, trs] = await Promise.all([api.listFees(branchId), api.listTrainers()]);
-        setFees(fs); setTrainers(trs);
-      } else { setFees(await api.listFees(branchId).catch(() => [])); }
+      setAttendanceDirty(false);
     } catch (e: any) { setErr(e.message); }
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [branchId]);
+  useEffect(() => { loadAttendance(); /* eslint-disable-next-line */ }, [branchId, viewDate]);
+  const changeViewDate = (newDate: string) => {
+    if (isToday && attendanceDirty && !confirm("You have unsaved attendance changes for today. Discard them?")) return;
+    setViewDate(newDate);
+  };
 
   // ---- students ----
-  const [sForm, setSForm] = useState({ name: "", phone: "", monthly_fee: "" });
-  const addStudent = async () => {
+  const [sForm, setSForm] = useState<any>(emptyStudentForm);
+  const [sModalOpen, setSModalOpen] = useState(false);
+  const [sEditId, setSEditId] = useState<string | null>(null);
+  const { uploading: sUploading, onFileChange: onStudentPhotoChange } = useImageUpload("am360/students");
+  const openAddStudent = () => { setSEditId(null); setSForm(emptyStudentForm); setSModalOpen(true); };
+  const openEditStudent = (s: any) => {
+    setSEditId(s.id);
+    setSForm({
+      name: s.name || "", phone: s.phone || "", monthly_fee: String(s.monthly_fee ?? ""), parent_name: s.parent_name || "",
+      alt_mobile: s.alt_mobile || "", email: s.email || "", address: s.address || "", dob: s.dob || "", gender: s.gender || "",
+      admission_date: s.admission_date || "", batch: s.batch || "", course: s.course || "", photo_url: s.photo_url || "",
+      emergency_contact: s.emergency_contact || "", medical_notes: s.medical_notes || "", notes: s.notes || "", status: s.status || "active",
+    });
+    setSModalOpen(true);
+  };
+  const onStudentPhoto = (e: any) => onStudentPhotoChange(e, url => setSForm((s: any) => ({ ...s, photo_url: url })), setErr);
+  const saveStudent = async () => {
     try {
-      await api.createStudent({ name: sForm.name, phone: sForm.phone, branch_id: branchId, monthly_fee: parseFloat(sForm.monthly_fee) || 0 });
-      setSForm({ name: "", phone: "", monthly_fee: "" }); load();
+      const data: any = { ...sForm, monthly_fee: parseFloat(sForm.monthly_fee) || 0 };
+      if (sEditId) await api.updateStudent(sEditId, data);
+      else await api.createStudent({ ...data, branch_id: branchId });
+      setSModalOpen(false); load();
     } catch (e: any) { setErr(e.message); }
   };
+  const closeStudentModal = () => { setSModalOpen(false); setErr(""); };
+  const [transferId, setTransferId] = useState<string | null>(null);
+  const [transferTo, setTransferTo] = useState("");
+  const startTransfer = (s: any) => { setTransferId(s.id); setTransferTo(""); };
+  const doTransfer = async () => {
+    if (!transferTo) return;
+    try { await api.transferStudent(transferId as string, transferTo); setTransferId(null); load(); }
+    catch (e: any) { setErr(e.message); }
+  };
+  const studentsPager = usePager(students.length);
+  const exportStudents = () => downloadCsv(`students-${branchId}.csv`, [
+    { key: "name", label: "Name" }, { key: "phone", label: "Phone" }, { key: "alt_mobile", label: "Alt Mobile" },
+    { key: "email", label: "Email" }, { key: "parent_name", label: "Parent Name" }, { key: "address", label: "Address" },
+    { key: "dob", label: "DOB" }, { key: "gender", label: "Gender" }, { key: "admission_date", label: "Admission Date" },
+    { key: "batch", label: "Batch" }, { key: "course", label: "Course" }, { key: "monthly_fee", label: "Monthly Fee" },
+    { key: "emergency_contact", label: "Emergency Contact" }, { key: "status", label: "Status" },
+  ], students);
 
   // ---- attendance ----
-  const toggle = (id: string) => setAttendance(p => ({ ...p, [id]: cycle(p[id]) }));
-  const markAll = () => { const m: Record<string, Status> = {}; for (const s of students) m[s.id] = "present"; setAttendance(m); };
-  const addPhoto = async (e: any) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    if (photos.length >= 2) { setErr("Maximum 2 photos per class."); return; }
-    try { const url = await uploadImage(f, "am360/attendance"); setPhotos(p => [...p, url]); }
-    catch (e: any) { setErr("Photo upload failed: " + e.message); }
+  const toggle = (id: string) => { if (isToday) { setAttendance(p => ({ ...p, [id]: cycle(p[id]) })); setAttendanceDirty(true); } };
+  const markAll = () => { const m: Record<string, Status> = {}; for (const s of students) m[s.id] = "present"; setAttendance(m); setAttendanceDirty(true); };
+  const { uploading: photoUploading, onFileChange: onClassPhotoChange } = useImageUpload("am360/attendance");
+  const addPhoto = (e: any) => {
+    if (photos.length >= 2) { setErr("Maximum 2 photos per class."); e.target.value = ""; return; }
+    onClassPhotoChange(e, url => { setPhotos(p => [...p, url]); setAttendanceDirty(true); }, setErr);
   };
+  const removePhoto = (i: number) => { setPhotos(ph => ph.filter((_, j) => j !== i)); setAttendanceDirty(true); };
   const save = async () => {
     setMsg(""); setErr("");
     try {
       const records = students.map(s => ({ student_id: s.id, status: attendance[s.id] || "absent" }));
       await api.markAttendance({ branch_id: branchId, date: today, records, photos });
       setMsg("Attendance & photos saved.");
+      setAttendanceDirty(false);
     } catch (e: any) { setErr(e.message); }
   };
+  const exportAttendance = () => downloadCsv(`attendance-${branchId}-${viewDate}.csv`,
+    [{ key: "name", label: "Name" }, { key: "status", label: "Status" }],
+    students.map(s => ({ name: s.name, status: attendance[s.id] || "no record" })));
 
   // ---- fees ----
   const feeByStudent = useMemo(() => {
     const m: Record<string, any> = {}; for (const f of fees) if (f.month === today.slice(0, 7)) m[f.student_id] = f; return m;
   }, [fees, today]);
   const createFee = async (s: any) => {
-    try { await api.createFee({ student_id: s.id, amount: s.monthly_fee || 0, month: today.slice(0, 7), status: "pending" }); load(); }
+    try { await api.createFee({ student_id: s.id, amount: s.monthly_fee || 0, month: today.slice(0, 7), status: "pending" }); loadFeesTrainers(); }
     catch (e: any) { setErr(e.message); }
   };
-  const payFee = async (f: any) => { await api.payFee(f.id, { amount: f.amount, method: "cash", paid_date: today }); load(); };
-
-  // ---- schedule ----
-  const [scForm, setScForm] = useState<any>({ title: "", trainer_id: "", day_of_week: 0, start_time: "17:00", end_time: "18:00" });
-  const addSchedule = async () => {
+  const [payTarget, setPayTarget] = useState<any>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const openPay = (f: any) => { setPayTarget(f); setPayAmount(String(Math.max(0, f.amount - f.paid_amount))); setPayMethod("cash"); };
+  const submitPay = async () => {
     try {
-      await api.createSchedule({ branch_id: branchId, title: scForm.title, trainer_id: scForm.trainer_id || null,
-        day_of_week: Number(scForm.day_of_week), start_time: scForm.start_time, end_time: scForm.end_time });
-      setScForm({ ...scForm, title: "" }); load();
+      await api.payFee(payTarget.id, { amount: parseFloat(payAmount) || 0, method: payMethod, paid_date: today });
+      setPayTarget(null); loadFeesTrainers();
     } catch (e: any) { setErr(e.message); }
   };
+  const closePayModal = () => { setPayTarget(null); setErr(""); };
+  const feesPager = usePager(students.length);
+  const exportFees = () => downloadCsv(`fees-${branchId}-${today.slice(0, 7)}.csv`,
+    [{ key: "name", label: "Name" }, { key: "amount", label: "Amount" }, { key: "paid_amount", label: "Paid" }, { key: "status", label: "Status" }],
+    students.map(s => { const f = feeByStudent[s.id]; return { name: s.name, amount: f?.amount ?? "", paid_amount: f?.paid_amount ?? "", status: f?.status || "no record" }; }));
+
+  // ---- schedule ----
+  const emptyScForm = { title: "", trainer_id: "", day_of_week: 0, start_time: "17:00", end_time: "18:00" };
+  const [scForm, setScForm] = useState<any>(emptyScForm);
+  const [scEditId, setScEditId] = useState<string | null>(null);
+  const saveSchedule = async () => {
+    try {
+      const data = { branch_id: branchId, title: scForm.title, trainer_id: scForm.trainer_id || null,
+        day_of_week: Number(scForm.day_of_week), start_time: scForm.start_time, end_time: scForm.end_time };
+      if (scEditId) await api.updateSchedule(scEditId, data); else await api.createSchedule(data);
+      setScForm(emptyScForm); setScEditId(null); load();
+    } catch (e: any) { setErr(e.message); }
+  };
+  const editSchedule = (s: any) => { setScEditId(s.id); setScForm({ title: s.title, trainer_id: s.trainer_id || "", day_of_week: s.day_of_week, start_time: s.start_time, end_time: s.end_time }); };
+  const cancelScheduleEdit = () => { setScEditId(null); setScForm(emptyScForm); };
   const delSchedule = async (id: string) => { if (confirm("Remove class?")) { await api.deleteSchedule(id); load(); } };
+  const schedulePager = usePager(schedules.length);
 
   return (
     <div>
@@ -100,78 +191,194 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
       <nav className="nav">
         {TABS.map(t => <a key={t} className={tab === t ? "active" : ""} onClick={() => { setMsg(""); setErr(""); setTab(t); }} style={{ cursor: "pointer", textTransform: "capitalize" }}>{t}</a>)}
       </nav>
-      {err && <div className="err">{err}</div>}
+      {err && !sModalOpen && !payTarget && <div className="err">{err}</div>}
       {msg && <div style={{ color: "var(--ok)", fontSize: 14, marginBottom: 10 }}>{msg}</div>}
 
       {tab === "students" && (
         <div>
-          <div className="card" style={{ marginBottom: 14 }}>
+          <div className="row" style={{ marginBottom: 14, justifyContent: "space-between" }}>
             <div className="row">
-              <input placeholder="Name" value={sForm.name} onChange={e => setSForm({ ...sForm, name: e.target.value })} style={{ flex: 2 }} />
-              <input placeholder="Phone" value={sForm.phone} onChange={e => setSForm({ ...sForm, phone: e.target.value })} style={{ flex: 1 }} />
-              <input placeholder="₹/mo" value={sForm.monthly_fee} onChange={e => setSForm({ ...sForm, monthly_fee: e.target.value })} style={{ width: 90 }} />
-              <button onClick={addStudent} disabled={!sForm.name}>Add</button>
+              <button onClick={openAddStudent}>Add student</button>
+              <button className="secondary" onClick={exportStudents} disabled={!students.length}>Export CSV</button>
             </div>
+            <label className="row" style={{ fontSize: 13, gap: 6 }}>
+              <input type="checkbox" checked={showInactiveStudents} onChange={e => setShowInactiveStudents(e.target.checked)} /> Show inactive
+            </label>
           </div>
-          {students.map(s => (
-            <div className="list-item" key={s.id}>
-              <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>{s.phone || "—"} · ₹{s.monthly_fee}/mo</div></div>
-              {isAdmin && <button className="danger" onClick={async () => { if (confirm("Delete student?")) { await api.deleteStudent(s.id); load(); } }}>Delete</button>}
+          {students.slice(studentsPager.start, studentsPager.end).map(s => (
+            <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div>
+                  <b>{s.name}</b> {s.status !== "active" && <span className="badge" style={{ color: "var(--muted)" }}>inactive</span>}
+                  <div className="muted" style={{ fontSize: 13 }}>{s.phone || "—"} · ₹{s.monthly_fee}/mo{s.batch ? ` · ${s.batch}` : ""}{s.course ? ` · ${s.course}` : ""}</div>
+                </div>
+                <div className="row">
+                  {isAdmin && <button className="secondary" onClick={() => openEditStudent(s)}>Edit</button>}
+                  {isAdmin && <button className="secondary" onClick={() => startTransfer(s)}>Transfer</button>}
+                  {isAdmin && <button className="secondary" onClick={async () => { try { await api.updateStudent(s.id, { status: s.status === "active" ? "inactive" : "active" }); load(); } catch (e: any) { setErr(e.message); } }}>{s.status === "active" ? "Deactivate" : "Activate"}</button>}
+                  {isAdmin && <button className="danger" onClick={async () => { if (confirm("Delete student?")) { await api.deleteStudent(s.id); load(); } }}>Delete</button>}
+                </div>
+              </div>
+              {transferId === s.id && (
+                <div className="row" style={{ marginTop: 8 }}>
+                  <select value={transferTo} onChange={e => setTransferTo(e.target.value)} style={{ flex: 1 }}>
+                    <option value="">Select destination branch…</option>
+                    {allBranches.filter(b => b.id !== branchId).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                  <button onClick={doTransfer} disabled={!transferTo}>Move</button>
+                  <button className="secondary" onClick={() => setTransferId(null)}>Cancel</button>
+                </div>
+              )}
             </div>
           ))}
           {!students.length && <p className="muted">No students yet.</p>}
+          <Pager page={studentsPager.page} setPage={studentsPager.setPage} totalPages={studentsPager.totalPages} />
+
+          {sModalOpen && (
+            <Modal title={sEditId ? "Edit student" : "Add student"} onClose={closeStudentModal}>
+              {sForm.photo_url && <img src={cld(sForm.photo_url, { w: 128, h: 128, crop: "fill", gravity: "auto" })} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", marginBottom: 10 }} />}
+              <div className="field"><label>Photo {sUploading && <span className="muted">(uploading…)</span>}</label><input type="file" accept="image/*" onChange={onStudentPhoto} /></div>
+              <div className="row">
+                <div className="field" style={{ flex: 2 }}><label>Name</label><input value={sForm.name} onChange={e => setSForm({ ...sForm, name: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}><label>₹/month</label><input value={sForm.monthly_fee} onChange={e => setSForm({ ...sForm, monthly_fee: e.target.value })} /></div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flex: 1 }}><label>Phone</label><input value={sForm.phone} onChange={e => setSForm({ ...sForm, phone: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}><label>Alt. mobile</label><input value={sForm.alt_mobile} onChange={e => setSForm({ ...sForm, alt_mobile: e.target.value })} /></div>
+              </div>
+              <div className="field"><label>Email</label><input value={sForm.email} onChange={e => setSForm({ ...sForm, email: e.target.value })} /></div>
+              <div className="field"><label>Address</label><input value={sForm.address} onChange={e => setSForm({ ...sForm, address: e.target.value })} /></div>
+              <div className="row">
+                <div className="field" style={{ flex: 1 }}><label>Parent/guardian name</label><input value={sForm.parent_name} onChange={e => setSForm({ ...sForm, parent_name: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}><label>Emergency contact</label><input value={sForm.emergency_contact} onChange={e => setSForm({ ...sForm, emergency_contact: e.target.value })} /></div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flex: 1 }}><label>Date of birth</label><input type="date" value={sForm.dob} onChange={e => setSForm({ ...sForm, dob: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}>
+                  <label>Gender</label>
+                  <select value={sForm.gender} onChange={e => setSForm({ ...sForm, gender: e.target.value })}>
+                    <option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flex: 1 }}><label>Admission date</label><input type="date" value={sForm.admission_date} onChange={e => setSForm({ ...sForm, admission_date: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}>
+                  <label>Status</label>
+                  <select value={sForm.status} onChange={e => setSForm({ ...sForm, status: e.target.value })}>
+                    <option value="active">Active</option><option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flex: 1 }}><label>Batch</label><input value={sForm.batch} onChange={e => setSForm({ ...sForm, batch: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}><label>Course</label><input value={sForm.course} onChange={e => setSForm({ ...sForm, course: e.target.value })} /></div>
+              </div>
+              <div className="field"><label>Medical notes</label><textarea rows={2} value={sForm.medical_notes} onChange={e => setSForm({ ...sForm, medical_notes: e.target.value })} /></div>
+              <div className="field"><label>Notes</label><textarea rows={2} value={sForm.notes} onChange={e => setSForm({ ...sForm, notes: e.target.value })} /></div>
+              {err && <div className="err">{err}</div>}
+              <div className="row">
+                <button onClick={saveStudent} disabled={!sForm.name}>{sEditId ? "Update" : "Add"}</button>
+                <button className="secondary" onClick={closeStudentModal}>Cancel</button>
+              </div>
+            </Modal>
+          )}
         </div>
       )}
 
       {tab === "attendance" && (
         <div>
-          <div className="row" style={{ marginBottom: 12 }}>
-            <button className="secondary" onClick={markAll}>Mark all present</button>
-            <button onClick={save}>Save</button>
+          <div className="row" style={{ marginBottom: 12, justifyContent: "space-between" }}>
+            <div className="field" style={{ margin: 0, width: 180 }}>
+              <input type="date" value={viewDate} max={today} onChange={e => changeViewDate(e.target.value)} />
+            </div>
+            <div className="row">
+              {isToday && <button className="secondary" onClick={markAll}>Mark all present</button>}
+              {isToday && <button onClick={save}>Save</button>}
+              <button className="secondary" onClick={exportAttendance} disabled={!students.length}>Export CSV</button>
+              {!isToday && <span className="muted" style={{ fontSize: 13, alignSelf: "center" }}>Viewing past date — read only</span>}
+            </div>
           </div>
           {students.map(s => {
             const st = attendance[s.id];
             return (
-              <div className="list-item" key={s.id} onClick={() => toggle(s.id)} style={{ cursor: "pointer" }}>
+              <div className="list-item" key={s.id} onClick={() => toggle(s.id)} style={{ cursor: isToday ? "pointer" : "default" }}>
                 <b>{s.name}</b>
-                <span className="badge" style={{ color: st ? STATUS_COLOR[st] : "var(--muted)", textTransform: "capitalize" }}>{st || "tap to mark"}</span>
+                <span className="badge" style={{ color: st ? STATUS_COLOR[st] : "var(--muted)", textTransform: "capitalize" }}>{st || (isToday ? "tap to mark" : "no record")}</span>
               </div>
             );
           })}
           {!students.length && <p className="muted">Add students first.</p>}
           <div className="card" style={{ marginTop: 14 }}>
-            <b>Class photos (max 2)</b>
+            <b>Class photos {isToday && "(max 2)"} {photoUploading && <span className="muted">(uploading…)</span>}</b>
             <div className="row" style={{ marginTop: 10 }}>
               {photos.map((p, i) => (
                 <div key={i} style={{ position: "relative" }}>
-                  <img src={p} alt="" style={{ width: 90, height: 90, borderRadius: 10, objectFit: "cover" }} />
-                  <button className="danger" style={{ padding: "2px 8px", marginTop: 4 }} onClick={() => setPhotos(ph => ph.filter((_, j) => j !== i))}>✕</button>
+                  <img src={cld(p, { w: 180, h: 180, crop: "fill", gravity: "auto" })} alt="" style={{ width: 90, height: 90, borderRadius: 10, objectFit: "cover", cursor: "zoom-in" }} onClick={() => setLightbox(p)} />
+                  {isToday && <button className="danger" style={{ padding: "2px 8px", marginTop: 4 }} onClick={() => removePhoto(i)}>✕</button>}
                 </div>
               ))}
-              {photos.length < 2 && <input type="file" accept="image/*" onChange={addPhoto} />}
+              {isToday && photos.length < 2 && <input type="file" accept="image/*" onChange={addPhoto} />}
+              {!isToday && !photos.length && <span className="muted" style={{ fontSize: 13 }}>No photos for this date.</span>}
             </div>
           </div>
+          {lightbox && (
+            <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+              <img src={cld(lightbox, { w: 1600, crop: "limit" })} alt="" />
+            </div>
+          )}
         </div>
       )}
 
       {tab === "fees" && (
         <div>
-          {students.map(s => {
+          <div className="row" style={{ marginBottom: 14 }}>
+            <button className="secondary" onClick={exportFees} disabled={!students.length}>Export CSV</button>
+          </div>
+          {students.slice(feesPager.start, feesPager.end).map(s => {
             const f = feeByStudent[s.id];
             return (
-              <div className="list-item" key={s.id}>
-                <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {today.slice(0, 7)}</div></div>
-                <div className="row">
-                  {f ? <span className={`badge ${f.status}`} style={{ textTransform: "capitalize" }}>{f.status}</span>
-                    : <span className="muted" style={{ fontSize: 13 }}>no record</span>}
-                  {isAdmin && !f && <button className="secondary" onClick={() => createFee(s)}>Create</button>}
-                  {isAdmin && f && f.status !== "paid" && <button onClick={() => payFee(f)}>Mark paid</button>}
+              <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {today.slice(0, 7)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}</div></div>
+                  <div className="row">
+                    {f ? <span className={`badge ${f.status}`} style={{ textTransform: "capitalize" }}>{f.status}</span>
+                      : <span className="muted" style={{ fontSize: 13 }}>no record</span>}
+                    {isAdmin && !f && <button className="secondary" onClick={() => createFee(s)}>Create</button>}
+                    {isAdmin && f && f.status !== "paid" && <button onClick={() => openPay(f)}>Record payment</button>}
+                  </div>
                 </div>
+                {f && f.payments && f.payments.length > 0 && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                    {f.payments.map((p: any) => (
+                      <div key={p.id} className="muted" style={{ fontSize: 13 }}>₹{p.amount} · {p.method} · {p.paid_date}{p.note ? ` · ${p.note}` : ""}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
           {!students.length && <p className="muted">No students.</p>}
           {!isAdmin && <p className="muted" style={{ fontSize: 13 }}>Fees are managed by admins.</p>}
+          <Pager page={feesPager.page} setPage={feesPager.setPage} totalPages={feesPager.totalPages} />
+
+          {payTarget && (
+            <Modal title={`Record payment — ${students.find(s => s.id === payTarget.student_id)?.name || ""}`} onClose={closePayModal}>
+              <p className="muted" style={{ fontSize: 13 }}>Total ₹{payTarget.amount} · already paid ₹{payTarget.paid_amount}</p>
+              <div className="field"><label>Amount</label><input value={payAmount} onChange={e => setPayAmount(e.target.value)} /></div>
+              <div className="field">
+                <label>Method</label>
+                <select value={payMethod} onChange={e => setPayMethod(e.target.value)}>
+                  <option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option>
+                </select>
+              </div>
+              {err && <div className="err">{err}</div>}
+              <div className="row">
+                <button onClick={submitPay} disabled={!payAmount || parseFloat(payAmount) <= 0}>Save payment</button>
+                <button className="secondary" onClick={closePayModal}>Cancel</button>
+              </div>
+            </Modal>
+          )}
         </div>
       )}
 
@@ -179,7 +386,8 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
         <div>
           {isAdmin && (
             <div className="card" style={{ marginBottom: 14 }}>
-              <div className="row">
+              <b>{scEditId ? "Edit class" : "Add class"}</b>
+              <div className="row" style={{ marginTop: 10 }}>
                 <input placeholder="Class title" value={scForm.title} onChange={e => setScForm({ ...scForm, title: e.target.value })} style={{ flex: 2 }} />
                 <select value={scForm.trainer_id} onChange={e => setScForm({ ...scForm, trainer_id: e.target.value })} style={{ flex: 1 }}>
                   <option value="">No trainer</option>
@@ -192,17 +400,24 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                 </select>
                 <input type="time" value={scForm.start_time} onChange={e => setScForm({ ...scForm, start_time: e.target.value })} style={{ width: 120 }} />
                 <input type="time" value={scForm.end_time} onChange={e => setScForm({ ...scForm, end_time: e.target.value })} style={{ width: 120 }} />
-                <button onClick={addSchedule} disabled={!scForm.title}>Add</button>
+                <button onClick={saveSchedule} disabled={!scForm.title}>{scEditId ? "Update" : "Add"}</button>
+                {scEditId && <button className="secondary" onClick={cancelScheduleEdit}>Cancel</button>}
               </div>
             </div>
           )}
-          {schedules.map(s => (
+          {schedules.slice(schedulePager.start, schedulePager.end).map(s => (
             <div className="list-item" key={s.id}>
               <div><b>{s.title}</b><div className="muted" style={{ fontSize: 13 }}>{DAYS[s.day_of_week]} · {s.start_time}–{s.end_time}{s.trainer_id ? ` · ${trainers.find(t => t.id === s.trainer_id)?.name || "trainer"}` : ""}</div></div>
-              {isAdmin && <button className="danger" onClick={() => delSchedule(s.id)}>Delete</button>}
+              {isAdmin && (
+                <div className="row">
+                  <button className="secondary" onClick={() => editSchedule(s)}>Edit</button>
+                  <button className="danger" onClick={() => delSchedule(s.id)}>Delete</button>
+                </div>
+              )}
             </div>
           ))}
           {!schedules.length && <p className="muted">No classes scheduled.</p>}
+          <Pager page={schedulePager.page} setPage={schedulePager.setPage} totalPages={schedulePager.totalPages} />
         </div>
       )}
     </div>

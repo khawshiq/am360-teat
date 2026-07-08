@@ -15,8 +15,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
     if (!loading && user?.role === "trainer") router.replace("/trainer");
+    if (!loading && user?.must_change_password) router.replace("/change-password");
   }, [user, loading, router]);
-  if (loading || !user) return <div className="center muted">Loading…</div>;
+  if (loading || !user || user.must_change_password) return <div className="center muted">Loading…</div>;
   const isActive = (href: string) => href === "/admin" ? path === href : path.startsWith(href);
 
   return (

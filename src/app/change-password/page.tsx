@@ -5,7 +5,7 @@ import { api } from "@/lib/client";
 import { useAuth } from "@/context/auth";
 
 export default function ChangePassword() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
   const [cur, setCur] = useState(""); const [nw, setNw] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
@@ -13,7 +13,9 @@ export default function ChangePassword() {
     setErr(""); setBusy(true);
     try {
       await api.changePassword({ current_password: cur, new_password: nw });
-      router.replace(user?.role === "trainer" ? "/trainer" : "/admin");
+      const role = user?.role;
+      await refreshUser();
+      router.replace(role === "trainer" ? "/trainer" : "/admin");
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
   return (

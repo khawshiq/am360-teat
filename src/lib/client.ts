@@ -25,15 +25,18 @@ export const api = {
   me: () => request("/auth/me"),
   getAcademy: () => request("/academy"),
   updateAcademy: (b: any) => request("/academy", { method: "PUT", ...body(b) }),
-  listBranches: () => request("/branches"),
+  listBranches: (includeInactive = false) => request(`/branches${includeInactive ? "?include_inactive=1" : ""}`),
   createBranch: (b: any) => request("/branches", { method: "POST", ...body(b) }),
   updateBranch: (id: string, b: any) => request(`/branches/${id}`, { method: "PUT", ...body(b) }),
   deleteBranch: (id: string) => request(`/branches/${id}`, { method: "DELETE" }),
-  listTrainers: () => request("/trainers"),
+  listTrainers: (includeInactive = false) => request(`/trainers${includeInactive ? "?include_inactive=1" : ""}`),
   createTrainer: (b: any) => request("/trainers", { method: "POST", ...body(b) }),
   updateTrainer: (id: string, b: any) => request(`/trainers/${id}`, { method: "PUT", ...body(b) }),
   deleteTrainer: (id: string) => request(`/trainers/${id}`, { method: "DELETE" }),
-  listStudents: (bid?: string) => request(`/students${bid ? `?branch_id=${bid}` : ""}`),
+  listStudents: (bid?: string, includeInactive = false) => {
+    const q = new URLSearchParams(); if (bid) q.set("branch_id", bid); if (includeInactive) q.set("include_inactive", "1");
+    return request(`/students${q.toString() ? `?${q}` : ""}`);
+  },
   createStudent: (b: any) => request("/students", { method: "POST", ...body(b) }),
   updateStudent: (id: string, b: any) => request(`/students/${id}`, { method: "PUT", ...body(b) }),
   deleteStudent: (id: string) => request(`/students/${id}`, { method: "DELETE" }),

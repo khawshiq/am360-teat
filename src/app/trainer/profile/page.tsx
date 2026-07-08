@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/client";
 import { useAuth } from "@/context/auth";
 
@@ -17,6 +18,7 @@ export default function TrainerProfile() {
         <p><span className="muted">Phone:</span> {user.phone || "—"}</p>
         <p><span className="muted">Branches:</span> {branches.map(b => b.name).join(", ") || "—"}</p>
       </div>
+      <Link href="/change-password"><button className="secondary" style={{ marginTop: 8 }}>Change Password</button></Link>
     </div>
   );
 }
