@@ -1,1 +1,46 @@
+name: Build Android app
 
+  on:
+    workflow_dispatch: {}
+    push:
+      branches: [am360-fetcher, main]
+      paths:
+        - "mobile/**"
+        - ".github/workflows/android.yml"
+
+  jobs:
+    build-android:
+      runs-on: ubuntu-latest
+      defaults:
+        run:
+          working-directory: mobile
+      steps:
+        - uses: actions/checkout@v4
+        - name: Set up Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 20
+        - name: Set up JDK 17
+          uses: actions/setup-java@v4
+          with:
+            distribution: temurin
+            java-version: 17
+        - name: Set up Android SDK
+          uses: android-actions/setup-android@v3
+        - name: Install Capacitor deps
+          run: npm install
+        - name: Add Android platform
+          run: npx cap add android
+        - name: Generate app icon & splash
+          run: npx @capacitor/assets generate --android
+        - name: Sync
+          run: npx cap sync android
+        - name: Build debug APK
+          working-directory: mobile/android
+          run: ./gradlew assembleDebug --no-daemon
+        - name: Upload APK artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: am360-debug-apk
+            path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            if-no-files-found: error
