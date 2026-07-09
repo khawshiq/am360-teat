@@ -186,8 +186,8 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
 
   return (
     <div>
-      <h3 style={{ margin: "4px 0" }}>{branch?.name || "Branch"}</h3>
-      <p className="muted" style={{ marginTop: 0 }}>{students.length} students · {today}</p>
+      <div className="title" style={{ marginBottom: 2 }}>{branch?.name || "Branch"}</div>
+      <p className="muted" style={{ marginTop: 0, fontSize: 13.5 }}>{students.length} students · {today}</p>
       <nav className="nav">
         {TABS.map(t => <a key={t} className={tab === t ? "active" : ""} onClick={() => { setMsg(""); setErr(""); setTab(t); }} style={{ cursor: "pointer", textTransform: "capitalize" }}>{t}</a>)}
       </nav>
@@ -209,7 +209,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
             <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <div>
-                  <b>{s.name}</b> {s.status !== "active" && <span className="badge" style={{ color: "var(--muted)" }}>inactive</span>}
+                  <b>{s.name}</b> {s.status !== "active" && <span className="badge inactive">inactive</span>}
                   <div className="muted" style={{ fontSize: 13 }}>{s.phone || "—"} · ₹{s.monthly_fee}/mo{s.batch ? ` · ${s.batch}` : ""}{s.course ? ` · ${s.course}` : ""}</div>
                 </div>
                 <div className="row">
@@ -310,7 +310,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
           })}
           {!students.length && <p className="muted">Add students first.</p>}
           <div className="card" style={{ marginTop: 14 }}>
-            <b>Class photos {isToday && "(max 2)"} {photoUploading && <span className="muted">(uploading…)</span>}</b>
+            <div className="section-title">Class photos {isToday && "(max 2)"} {photoUploading && <span className="muted" style={{ fontWeight: 400 }}>(uploading…)</span>}</div>
             <div className="row" style={{ marginTop: 10 }}>
               {photos.map((p, i) => (
                 <div key={i} style={{ position: "relative" }}>
@@ -386,7 +386,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
         <div>
           {isAdmin && (
             <div className="card" style={{ marginBottom: 14 }}>
-              <b>{scEditId ? "Edit class" : "Add class"}</b>
+              <div className="section-title">{scEditId ? "Edit class" : "Add class"}</div>
               <div className="row" style={{ marginTop: 10 }}>
                 <input placeholder="Class title" value={scForm.title} onChange={e => setScForm({ ...scForm, title: e.target.value })} style={{ flex: 2 }} />
                 <select value={scForm.trainer_id} onChange={e => setScForm({ ...scForm, trainer_id: e.target.value })} style={{ flex: 1 }}>

@@ -51,8 +51,8 @@ export default function Trainers() {
   return (
     <div className="grid" style={{ gridTemplateColumns: "360px 1fr" }}>
       <div className="card" style={{ alignSelf: "start" }}>
-        <b>{editId ? "Edit trainer" : "Add trainer"}</b>
-        <div style={{ marginTop: 14 }}>
+        <div className="section-title">{editId ? "Edit trainer" : "Add trainer"}</div>
+        <div>
           <div className="field"><label>Name</label><input value={form.name} onChange={set("name")} /></div>
           {!editId && <>
             <div className="field"><label>Email</label><input value={form.email} onChange={set("email")} /></div>
@@ -92,7 +92,7 @@ export default function Trainers() {
         </div>
         {tempPw && (
           <div className="card" style={{ marginBottom: 14, borderColor: "var(--ok)" }}>
-            <b>Temporary password for {tempPw.name}</b>
+            <div className="section-title">Temporary password for {tempPw.name}</div>
             <p style={{ fontFamily: "monospace", fontSize: 16, margin: "8px 0" }}>{tempPw.pw}</p>
             <p className="muted" style={{ fontSize: 13 }}>Share this with the trainer — they'll be forced to change it on next login.</p>
             <button className="secondary" onClick={() => setTempPw(null)}>Dismiss</button>
@@ -101,7 +101,7 @@ export default function Trainers() {
         {items.slice(start, end).map(t => (
           <div className="list-item" key={t.id}>
             <div>
-              <div><b>{t.name}</b> {t.status !== "active" && <span className="badge" style={{ color: "var(--muted)" }}>inactive</span>}</div>
+              <div><b>{t.name}</b> {t.status !== "active" && <span className="badge inactive">inactive</span>}</div>
               <div className="muted" style={{ fontSize: 13 }}>{t.email} · {(t.branch_ids || []).map(bName).join(", ") || "—"}</div>
             </div>
             <div className="row">

@@ -1,8 +1,12 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "./prisma";
 
 const JWT_EXP = "7d";
+
+// Password-reset tokens are stored hashed; we compare hashes, never raw tokens.
+export const hashToken = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
 
 function secret(): string {
   const s = process.env.JWT_SECRET;

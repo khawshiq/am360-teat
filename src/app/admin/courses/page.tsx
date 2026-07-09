@@ -61,8 +61,8 @@ export default function Courses() {
       {/* Courses */}
       <div>
         <div className="card" style={{ marginBottom: 14 }}>
-          <b>{cEditId ? "Edit course" : "Add course"}</b>
-          <div style={{ marginTop: 14 }}>
+          <div className="section-title">{cEditId ? "Edit course" : "Add course"}</div>
+          <div>
             <div className="field"><label>Name</label><input value={cForm.name} onChange={cSet("name")} /></div>
             <div className="field"><label>Description</label><input value={cForm.description} onChange={cSet("description")} /></div>
             {err && <div className="err">{err}</div>}
@@ -91,8 +91,8 @@ export default function Courses() {
       {/* Batches */}
       <div>
         <div className="card" style={{ marginBottom: 14 }}>
-          <b>{bEditId ? "Edit batch" : "Add batch"}</b>
-          <div style={{ marginTop: 14 }}>
+          <div className="section-title">{bEditId ? "Edit batch" : "Add batch"}</div>
+          <div>
             <div className="field"><label>Name</label><input value={bForm.name} onChange={bSet("name")} /></div>
             <div className="field">
               <label>Branch</label>

@@ -22,16 +22,18 @@ export default function Dashboard() {
       </div>
 
       <div className="card">
-        <b>7-day attendance trend</b>
-        <div className="row" style={{ alignItems: "flex-end", height: 120, marginTop: 16 }}>
+        <div className="section-head">
+          <span className="section-title">7-day attendance trend</span>
+        </div>
+        <div className="chart">
           {d.attendance_trend.map((t: any) => {
             const pct = t.total ? (t.present / t.total) * 100 : 0;
             return (
-              <div key={t.date} style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ height: 90, display: "flex", alignItems: "flex-end" }}>
-                  <div style={{ width: "100%", height: `${pct}%`, background: "var(--accent2)", borderRadius: 6, minHeight: 2 }} />
+              <div key={t.date} className="chart-col" title={`${Math.round(pct)}% present`}>
+                <div className="chart-track">
+                  <div className="chart-bar" style={{ height: `${pct}%` }} />
                 </div>
-                <div className="muted" style={{ fontSize: 11 }}>{t.date.slice(5)}</div>
+                <div className="chart-x">{t.date.slice(5)}</div>
               </div>
             );
           })}
@@ -39,16 +41,16 @@ export default function Dashboard() {
       </div>
 
       <div className="card">
-        <b>Branch overview</b>
-        <div style={{ marginTop: 12 }}>
-          {d.branch_stats.map((b: any) => (
-            <div className="list-item" key={b.branch_id}>
-              <span>{b.name}</span>
-              <span className="muted">{b.students} students · {b.trainers} trainers</span>
-            </div>
-          ))}
-          {!d.branch_stats.length && <p className="muted">No branches yet.</p>}
+        <div className="section-head">
+          <span className="section-title">Branch overview</span>
         </div>
+        {d.branch_stats.map((b: any) => (
+          <div className="list-item" key={b.branch_id}>
+            <span style={{ fontWeight: 500 }}>{b.name}</span>
+            <span className="muted" style={{ fontSize: 13 }}>{b.students} students · {b.trainers} trainers</span>
+          </div>
+        ))}
+        {!d.branch_stats.length && <p className="empty">No branches yet.</p>}
       </div>
     </div>
   );
