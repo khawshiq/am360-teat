@@ -1,14 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth";
 import GoogleSignIn from "@/components/GoogleSignIn";
 import AuthShell from "@/components/AuthShell";
+import { isNativeApp } from "@/lib/platform";
 
 export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [native, setNative] = useState(false);
+  useEffect(() => { setNative(isNativeApp()); }, []);
+  const showGoogle = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && !native;
   const submit = async () => {
     setErr(""); setBusy(true);
     try { await login(email, password); } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
@@ -37,7 +41,7 @@ export default function Login() {
       {err && <div className="err">{err}</div>}
       <button disabled={busy} onClick={submit} className="btn-block">{busy ? "Signing in…" : "Sign in"}</button>
 
-      {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+      {showGoogle && (
         <>
           <div className="auth-divider"><span>OR</span></div>
           <GoogleSignIn onCredential={onGoogle} onError={setErr} />

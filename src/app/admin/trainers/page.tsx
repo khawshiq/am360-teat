@@ -49,7 +49,7 @@ export default function Trainers() {
   const { page, setPage, totalPages, start, end } = usePager(items.length);
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: "360px 1fr" }}>
+    <div className="split sidebar">
       <div className="card" style={{ alignSelf: "start" }}>
         <div className="section-title">{editId ? "Edit trainer" : "Add trainer"}</div>
         <div>

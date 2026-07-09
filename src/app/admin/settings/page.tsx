@@ -37,7 +37,7 @@ export default function Settings() {
   const today = new Date().toISOString().slice(0, 10);
   const expired = isPaid && !!form.subscription_expires && form.subscription_expires < today;
   return (
-    <div className="grid" style={{ gridTemplateColumns: "520px 1fr" }}>
+    <div className="split wide">
       <div className="card">
         <div className="section-title">Academy profile</div>
         <div>

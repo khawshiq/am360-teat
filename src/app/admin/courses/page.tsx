@@ -57,7 +57,7 @@ export default function Courses() {
   const bPager = usePager(batches.length);
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
+    <div className="split even">
       {/* Courses */}
       <div>
         <div className="card" style={{ marginBottom: 14 }}>
