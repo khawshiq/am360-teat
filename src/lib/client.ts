@@ -31,6 +31,9 @@ const body = (b: any) => ({ body: JSON.stringify(b) });
 export const api = {
   registerOwner: (b: any) => request("/auth/register-owner", { method: "POST", ...body(b) }, false),
   login: (b: any) => request("/auth/login", { method: "POST", ...body(b) }, false),
+  googleLogin: (credential: string) => request("/auth/google", { method: "POST", ...body({ credential }) }, false),
+  forgotPassword: (email: string) => request("/auth/forgot-password", { method: "POST", ...body({ email }) }, false),
+  resetPassword: (b: { token: string; password: string }) => request("/auth/reset-password", { method: "POST", ...body(b) }, false),
   me: () => request("/auth/me"),
   getAcademy: () => request("/academy"),
   updateAcademy: (b: any) => request("/academy", { method: "PUT", ...body(b) }),
