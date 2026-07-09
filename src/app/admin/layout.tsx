@@ -22,11 +22,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading || !user || user.must_change_password) return <div className="center muted">Loading…</div>;
   const isActive = (href: string) => href === "/admin" ? path === href : path.startsWith(href);
 
+  const initials = (user.name || "?").split(" ").map((s: string) => s[0]).slice(0, 2).join("");
   return (
     <div className="container">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <Link href="/admin"><div className="brand">AM <span>360</span></div></Link>
-        <div className="row"><span className="muted">{user.name}</span><button className="secondary" onClick={logout}>Logout</button></div>
+      <div className="topbar">
+        <Link href="/admin">
+          <div className="logo"><span className="mark">A</span><span>AM<span className="grad"> 360</span></span></div>
+        </Link>
+        <div className="topbar-user">
+          <div className="avatar" title={user.name}>{initials}</div>
+          <span className="muted" style={{ fontSize: 13.5 }}>{user.name}</span>
+          <button className="secondary" onClick={logout} style={{ padding: "7px 14px" }}>Logout</button>
+        </div>
       </div>
       <nav className="nav">
         {TABS.map(([label, href]) => (

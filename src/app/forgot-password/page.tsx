@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
+import AuthShell from "@/components/AuthShell";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState(""); const [busy, setBusy] = useState(false);
@@ -11,30 +12,28 @@ export default function ForgotPassword() {
     try { await api.forgotPassword(email); setSent(true); }
     catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
+
+  if (sent) return (
+    <AuthShell title="Check your email" subtitle={`If an account exists for ${email}, a reset link is on its way.`}>
+      <p className="auth-note" style={{ marginBottom: 20 }}>
+        The link expires in 1 hour. Don&apos;t see it? Check your spam folder.
+      </p>
+      <Link href="/login"><button className="secondary btn-block">Back to sign in</button></Link>
+    </AuthShell>
+  );
+
   return (
-    <div className="center">
-      <div className="card" style={{ width: 380 }}>
-        <div className="brand">AM <span>360</span></div>
-        {sent ? (
-          <>
-            <p className="muted" style={{ marginBottom: 8 }}>Check your email</p>
-            <p className="muted" style={{ fontSize: 14, marginBottom: 20 }}>
-              If an account exists for <b>{email}</b>, we&apos;ve sent a link to reset your password. It expires in 1 hour.
-            </p>
-            <Link href="/login"><button className="secondary" style={{ width: "100%" }}>Back to sign in</button></Link>
-          </>
-        ) : (
-          <>
-            <p className="muted" style={{ marginBottom: 20 }}>Reset your password</p>
-            <div className="field"><label>Email</label>
-              <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
-            </div>
-            {err && <div className="err">{err}</div>}
-            <button disabled={busy || !email} onClick={submit} style={{ width: "100%" }}>{busy ? "..." : "Send reset link"}</button>
-            <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>Remembered it? <Link href="/login" style={{ color: "var(--accent2)" }}>Sign in</Link></p>
-          </>
-        )}
+    <AuthShell
+      title="Reset your password"
+      subtitle="Enter your email and we'll send you a reset link"
+      footer={<>Remembered it? <Link className="link" href="/login">Sign in</Link></>}
+    >
+      <div className="field"><label>Email</label>
+        <input type="email" autoComplete="email" placeholder="you@academy.com" value={email}
+          onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
       </div>
-    </div>
+      {err && <div className="err">{err}</div>}
+      <button disabled={busy || !email} onClick={submit} className="btn-block">{busy ? "Sending…" : "Send reset link"}</button>
+    </AuthShell>
   );
 }

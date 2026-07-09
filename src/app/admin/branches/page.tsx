@@ -30,8 +30,8 @@ export default function Branches() {
   return (
     <div className="grid" style={{ gridTemplateColumns: "360px 1fr" }}>
       <div className="card" style={{ alignSelf: "start" }}>
-        <b>{editId ? "Edit branch" : "Add branch"}</b>
-        <div style={{ marginTop: 14 }}>
+        <div className="section-title">{editId ? "Edit branch" : "Add branch"}</div>
+        <div>
           <div className="field"><label>Name</label><input value={form.name} onChange={set("name")} /></div>
           <div className="field"><label>Branch code</label><input value={form.branch_code} onChange={set("branch_code")} /></div>
           <div className="field"><label>Address</label><input value={form.address} onChange={set("address")} /></div>
@@ -51,7 +51,7 @@ export default function Branches() {
         {items.slice(start, end).map(b => (
           <div className="list-item" key={b.id}>
             <Link href={`/admin/branch/${b.id}`} style={{ flex: 1 }}>
-              <div><b>{b.name}</b> {b.branch_code && <span className="muted" style={{ fontSize: 12 }}>({b.branch_code})</span>} {b.status !== "active" && <span className="badge" style={{ color: "var(--muted)" }}>inactive</span>} <span className="muted" style={{ fontSize: 12 }}>→ open</span></div>
+              <div><b>{b.name}</b> {b.branch_code && <span className="muted" style={{ fontSize: 12 }}>({b.branch_code})</span>} {b.status !== "active" && <span className="badge inactive">inactive</span>} <span className="muted" style={{ fontSize: 12 }}>→ open</span></div>
               <div className="muted" style={{ fontSize: 13 }}>{b.address || "—"} · {b.phone || "—"}{b.working_hours ? ` · ${b.working_hours}` : ""}</div>
             </Link>
             <div className="row">

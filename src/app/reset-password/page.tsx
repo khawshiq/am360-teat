@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
+import AuthShell from "@/components/AuthShell";
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -22,33 +23,34 @@ export default function ResetPassword() {
     catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
 
+  if (done) return (
+    <AuthShell title="Password reset" subtitle="Your password has been updated successfully.">
+      <button onClick={() => router.push("/login")} className="btn-block">Go to sign in</button>
+    </AuthShell>
+  );
+
+  if (token === null) return (
+    <AuthShell title="Reset password"><p className="auth-note">Loading…</p></AuthShell>
+  );
+
+  if (!token) return (
+    <AuthShell title="Invalid link" subtitle="This reset link is missing or malformed.">
+      <p className="auth-note" style={{ marginBottom: 20 }}>Reset links expire after 1 hour and can be used once.</p>
+      <Link href="/forgot-password"><button className="btn-block">Request a new link</button></Link>
+    </AuthShell>
+  );
+
   return (
-    <div className="center">
-      <div className="card" style={{ width: 380 }}>
-        <div className="brand">AM <span>360</span></div>
-        {done ? (
-          <>
-            <p className="muted" style={{ marginBottom: 20 }}>Your password has been reset. You can now sign in with it.</p>
-            <button onClick={() => router.push("/login")} style={{ width: "100%" }}>Go to sign in</button>
-          </>
-        ) : token === null ? (
-          <p className="muted">Loading…</p>
-        ) : !token ? (
-          <p className="muted">Invalid reset link. <Link href="/forgot-password" style={{ color: "var(--accent2)" }}>Request a new one</Link></p>
-        ) : (
-          <>
-            <p className="muted" style={{ marginBottom: 20 }}>Choose a new password</p>
-            <div className="field"><label>New password</label>
-              <input type="password" value={pw} onChange={e => setPw(e.target.value)} />
-            </div>
-            <div className="field"><label>Confirm password</label>
-              <input type="password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
-            </div>
-            {err && <div className="err">{err}</div>}
-            <button disabled={busy} onClick={submit} style={{ width: "100%" }}>{busy ? "..." : "Reset password"}</button>
-          </>
-        )}
+    <AuthShell title="Choose a new password" subtitle="Make it at least 6 characters.">
+      <div className="field"><label>New password</label>
+        <input type="password" autoComplete="new-password" placeholder="••••••••" value={pw} onChange={e => setPw(e.target.value)} />
       </div>
-    </div>
+      <div className="field"><label>Confirm password</label>
+        <input type="password" autoComplete="new-password" placeholder="••••••••" value={pw2}
+          onChange={e => setPw2(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
+      </div>
+      {err && <div className="err">{err}</div>}
+      <button disabled={busy} onClick={submit} className="btn-block">{busy ? "Resetting…" : "Reset password"}</button>
+    </AuthShell>
   );
 }

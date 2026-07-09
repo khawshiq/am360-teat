@@ -25,8 +25,8 @@ export default function Settings() {
   return (
     <div className="grid" style={{ gridTemplateColumns: "520px 1fr" }}>
       <div className="card">
-        <b>Academy profile</b>
-        <div style={{ marginTop: 14 }}>
+        <div className="section-title">Academy profile</div>
+        <div>
           {form.logo_url ? <img src={cld(form.logo_url, { w: 160, h: 160, crop: "fill", gravity: "auto" })} alt="logo" style={{ width: 80, height: 80, borderRadius: 14, objectFit: "cover", marginBottom: 12 }} /> : null}
           <div className="field"><label>Logo {up && <span className="muted">(uploading…)</span>}</label><input type="file" accept="image/*" onChange={onLogo} /></div>
           <div className="field"><label>Name</label><input value={form.name || ""} onChange={set("name")} /></div>
@@ -40,8 +40,8 @@ export default function Settings() {
         </div>
       </div>
       <div className="card" style={{ alignSelf: "start" }}>
-        <b>Subscription</b>
-        <div style={{ marginTop: 14 }}>
+        <div className="section-title">Subscription</div>
+        <div>
           <div className="field">
             <label>Plan</label>
             <select value={form.subscription_plan || "free"} onChange={set("subscription_plan")}>

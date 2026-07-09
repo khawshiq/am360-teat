@@ -14,7 +14,7 @@ export default function AuditLog() {
   const totalPages = Math.max(1, Math.ceil(d.total / PAGE_SIZE));
   return (
     <div>
-      <h3 style={{ marginTop: 0 }}>Audit log <span className="muted" style={{ fontSize: 14 }}>({d.total})</span></h3>
+      <div className="title">Audit log <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>({d.total})</span></div>
       {d.items.map((a: any) => (
         <div className="list-item" key={a.id}>
           <div><b>{a.action}</b> <span className="muted" style={{ fontSize: 13 }}>· {a.entity}</span>
