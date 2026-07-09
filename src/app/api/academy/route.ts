@@ -13,7 +13,10 @@ export async function PUT(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
   const b = await req.json();
   const data: any = {};
-  for (const k of ["name", "logo_url", "description", "subscription_plan", "subscription_status", "subscription_expires"]) if (b[k] != null) data[k] = b[k];
+  // Owners/admins may edit their academy profile only. Subscription fields
+  // (plan/status/expiry) are deliberately NOT accepted here — a customer must not
+  // be able to self-upgrade. Those are managed exclusively by the Super Admin.
+  for (const k of ["name", "logo_url", "description"]) if (b[k] != null) data[k] = b[k];
   await prisma.academy.update({ where: { id: a.user.academy_id }, data });
   await audit(a.user, "academy.update", "academy", a.user.academy_id);
   return json(await prisma.academy.findUnique({ where: { id: a.user.academy_id } }));

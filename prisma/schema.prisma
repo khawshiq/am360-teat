@@ -15,11 +15,31 @@ model Academy {
   logo_url             String?
   description          String  @default("")
   owner_id             String
-  subscription_plan    String  @default("free")     // free | premium
+  subscription_plan    String  @default("free")     // free | basic | pro | enterprise
   subscription_status  String  @default("active")   // active | expired
-  subscription_expires String?
+  subscription_started String?                       // start of current paid period
+  subscription_expires String?                       // end of current paid period
   status               String  @default("active")   // active | suspended  (set by Super Admin)
   created_at           String
+}
+
+// One purchase of a paid plan (via Razorpay). Keeps full history; the Academy row
+// holds the denormalized "current" plan/period for fast reads and limit checks.
+model Subscription {
+  id                  String  @id @default(uuid())
+  academy_id          String
+  plan_code           String                        // basic | pro | enterprise
+  months              Int                            // 1..12
+  amount              Float                          // total paid, in major units (₹)
+  currency            String  @default("INR")
+  start_date          String?
+  end_date            String?
+  status              String  @default("created")    // created | active | failed
+  razorpay_order_id   String?
+  razorpay_payment_id String?
+  created_at          String
+
+  @@index([academy_id, created_at])
 }
 
 // Platform-level Super Admin — sits above all academies. Seeded from env on first

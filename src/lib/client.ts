@@ -79,6 +79,10 @@ export const api = {
   createBatch: (b: any) => request("/batches", { method: "POST", ...body(b) }),
   updateBatch: (id: string, b: any) => request(`/batches/${id}`, { method: "PUT", ...body(b) }),
   deleteBatch: (id: string) => request(`/batches/${id}`, { method: "DELETE" }),
+  // --- Subscription (Razorpay) ---
+  listPlans: () => request("/plans"),
+  createSubscriptionOrder: (b: { plan_code: string; months: number }) => request("/subscription/order", { method: "POST", ...body(b) }),
+  verifySubscription: (b: any) => request("/subscription/verify", { method: "POST", ...body(b) }),
   // --- PRD additions ---
   changePassword: (b: any) => request("/auth/change-password", { method: "POST", ...body(b) }),
   resetTrainerPassword: (id: string) => request(`/trainers/${id}/reset-password`, { method: "POST", ...body({}) }),
