@@ -5,6 +5,9 @@ A thin native Android shell that loads the hosted AM360 web app
 automatically. Google Sign-In is hidden inside the app (WebViews block Google
 OAuth); email/password works, and Google login stays available on the web.
 
+The launcher icon and splash screen are generated from `assets/icon.png` (1024)
+and `assets/splash.png` (2732) by `@capacitor/assets` during the build.
+
 ## Build the APK (no local Android tooling needed)
 
 The GitHub Actions workflow **Build Android app** builds a debug APK in the cloud:
