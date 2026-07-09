@@ -23,7 +23,7 @@ export default function Announcements() {
   const acName = (id: string | null) => id ? (academies.find(a => a.id === id)?.name || id) : "All academies";
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: "360px 1fr", alignItems: "start" }}>
+    <div className="split sidebar">
       <div className="card">
         <b>New announcement</b>
         <div style={{ marginTop: 14 }}>

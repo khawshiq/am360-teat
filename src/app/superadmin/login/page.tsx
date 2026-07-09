@@ -14,7 +14,7 @@ export default function SuperAdminLogin() {
   };
   return (
     <div className="center">
-      <div className="card" style={{ width: 380 }}>
+      <div className="card" style={{ width: "100%", maxWidth: 380 }}>
         <div className="brand">AM <span>360</span></div>
         <p className="muted" style={{ marginBottom: 20 }}>Platform Super Admin</p>
         <div className="field"><label>Email</label><input value={email} onChange={e => setEmail(e.target.value)} /></div>

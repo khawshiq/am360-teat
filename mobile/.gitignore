@@ -1,0 +1,4 @@
+# Capacitor generates the native project + installs deps in CI; keep them out of git.
+node_modules/
+android/
+package-lock.json

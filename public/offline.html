@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Offline — AM 360</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #0a0a0e;
+      color: #f4f4f7;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: grid; place-items: center; text-align: center; padding: 24px;
+      background-image:
+        radial-gradient(52rem 34rem at 12% -12%, rgba(109,94,234,0.10), transparent 60%),
+        radial-gradient(46rem 34rem at 100% 0%, rgba(23,209,180,0.06), transparent 55%);
+    }
+    .mark { width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 20px;
+      background: linear-gradient(120deg, #8b7bff 0%, #17d1b4 100%);
+      display: grid; place-items: center; color: #08080c; font-weight: 800; font-size: 26px; }
+    h1 { font-size: 20px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    p { color: #9d9daf; margin: 0 0 22px; max-width: 320px; line-height: 1.55; }
+    button { background: #6d5eea; color: #fff; border: 0; border-radius: 10px;
+      padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="mark">A</div>
+    <h1>You're offline</h1>
+    <p>AM 360 needs an internet connection to load your academy data. Check your connection and try again.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>
