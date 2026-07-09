@@ -32,12 +32,16 @@ export default function Login() {
         {err && <div className="err">{err}</div>}
         <button disabled={busy} onClick={submit} style={{ width: "100%" }}>{busy ? "..." : "Sign in"}</button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0" }}>
-          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          <span className="muted" style={{ fontSize: 12 }}>or</span>
-          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-        </div>
-        <GoogleSignIn onCredential={onGoogle} onError={setErr} />
+        {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0" }}>
+              <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+              <span className="muted" style={{ fontSize: 12 }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            </div>
+            <GoogleSignIn onCredential={onGoogle} onError={setErr} />
+          </>
+        )}
 
         <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>No account? <Link href="/register" style={{ color: "var(--accent2)" }}>Create one</Link></p>
       </div>
