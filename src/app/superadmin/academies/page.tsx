@@ -23,7 +23,11 @@ export default function Academies() {
   const filtered = items.filter(a =>
     !q || a.name.toLowerCase().includes(q.toLowerCase()) || (a.owner_email || "").toLowerCase().includes(q.toLowerCase()));
   const { page, setPage, totalPages, start, end } = usePager(filtered.length);
-  const isPremium = (a: any) => ["premium", "pro"].includes(a.subscription_plan);
+  const PLAN_LABELS: Record<string, string> = { free: "Free", basic: "Basic", pro: "Pro", premium: "Pro", enterprise: "Enterprise" };
+  const today = new Date().toISOString().slice(0, 10);
+  const planCode = (a: any) => String(a.subscription_plan || "free").toLowerCase();
+  const isPaid = (a: any) => ["basic", "pro", "premium", "enterprise"].includes(planCode(a));
+  const isExpired = (a: any) => isPaid(a) && a.subscription_expires && a.subscription_expires < today;
 
   return (
     <div>
@@ -36,16 +40,22 @@ export default function Academies() {
           <div>
             <div>
               <b>{a.name}</b>{" "}
-              <span className="badge">{isPremium(a) ? "Premium" : "Free"}</span>{" "}
-              {a.status === "suspended" && <span className="badge" style={{ color: "var(--danger)" }}>suspended</span>}
+              <span className={`badge ${isPaid(a) && !isExpired(a) ? "active" : ""}`}>{PLAN_LABELS[planCode(a)] || "Free"}</span>{" "}
+              {isExpired(a) && <span className="badge overdue">expired</span>}{" "}
+              {a.status === "suspended" && <span className="badge overdue">suspended</span>}
             </div>
             <div className="muted" style={{ fontSize: 13 }}>
               {a.owner_name} · {a.owner_email} · {a.counts.branches} branches · {a.counts.trainers} trainers · {a.counts.students} students
             </div>
+            {isPaid(a) && a.subscription_started && a.subscription_expires && (
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                Subscribed: {a.subscription_started} → {a.subscription_expires}
+              </div>
+            )}
           </div>
           <div className="row">
-            <button className="secondary" onClick={() => patch(a.id, { subscription_plan: isPremium(a) ? "free" : "premium" })}>
-              {isPremium(a) ? "Downgrade" : "Make Premium"}
+            <button className="secondary" onClick={() => patch(a.id, { subscription_plan: isPaid(a) ? "free" : "pro" })}>
+              {isPaid(a) ? "Set Free" : "Grant Pro"}
             </button>
             <button className="secondary" onClick={() => patch(a.id, { status: a.status === "suspended" ? "active" : "suspended" })}>
               {a.status === "suspended" ? "Reactivate" : "Suspend"}
