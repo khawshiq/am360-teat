@@ -25,9 +25,26 @@ export default function Academies() {
   const { page, setPage, totalPages, start, end } = usePager(filtered.length);
   const PLAN_LABELS: Record<string, string> = { free: "Free", basic: "Basic", pro: "Pro", premium: "Pro", enterprise: "Enterprise" };
   const today = new Date().toISOString().slice(0, 10);
-  const planCode = (a: any) => String(a.subscription_plan || "free").toLowerCase();
-  const isPaid = (a: any) => ["basic", "pro", "premium", "enterprise"].includes(planCode(a));
+  const rawPlan = (a: any) => String(a.subscription_plan || "free").toLowerCase();
+  const planCode = (a: any) => (rawPlan(a) === "premium" ? "pro" : rawPlan(a)); // "premium" is a legacy alias
+  const isPaid = (a: any) => ["basic", "pro", "enterprise"].includes(planCode(a));
   const isExpired = (a: any) => isPaid(a) && a.subscription_expires && a.subscription_expires < today;
+  const isPermanent = (a: any) => isPaid(a) && !a.subscription_expires;
+
+  // A Super Admin grant has no end date, so the plan never lapses back to Free.
+  const grant = (a: any, code: string) => {
+    if (code === planCode(a)) return;
+    const paid = code !== "free";
+    if (!confirm(paid
+      ? `Grant "${a.name}" a permanent ${PLAN_LABELS[code]} plan (no expiry)?`
+      : `Move "${a.name}" back to the Free plan and its limits?`)) return;
+    patch(a.id, {
+      subscription_plan: code,
+      subscription_status: "active",
+      subscription_started: paid ? (a.subscription_started || today) : null,
+      subscription_expires: null,
+    });
+  };
 
   return (
     <div>
@@ -41,22 +58,26 @@ export default function Academies() {
             <div>
               <b>{a.name}</b>{" "}
               <span className={`badge ${isPaid(a) && !isExpired(a) ? "active" : ""}`}>{PLAN_LABELS[planCode(a)] || "Free"}</span>{" "}
+              {isPermanent(a) && <span className="badge active">permanent</span>}{" "}
               {isExpired(a) && <span className="badge overdue">expired</span>}{" "}
               {a.status === "suspended" && <span className="badge overdue">suspended</span>}
             </div>
             <div className="muted" style={{ fontSize: 13 }}>
               {a.owner_name} · {a.owner_email} · {a.counts.branches} branches · {a.counts.trainers} trainers · {a.counts.students} students
             </div>
-            {isPaid(a) && a.subscription_started && a.subscription_expires && (
+            {isPaid(a) && a.subscription_started && (
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                Subscribed: {a.subscription_started} → {a.subscription_expires}
+                Subscribed: {a.subscription_started} → {a.subscription_expires || "no expiry"}
               </div>
             )}
           </div>
           <div className="row">
-            <button className="secondary" onClick={() => patch(a.id, { subscription_plan: isPaid(a) ? "free" : "pro" })}>
-              {isPaid(a) ? "Set Free" : "Grant Pro"}
-            </button>
+            <select value={planCode(a)} onChange={e => grant(a, e.target.value)} style={{ maxWidth: 150 }}>
+              <option value="free">Free</option>
+              <option value="basic">Basic</option>
+              <option value="pro">Pro</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
             <button className="secondary" onClick={() => patch(a.id, { status: a.status === "suspended" ? "active" : "suspended" })}>
               {a.status === "suspended" ? "Reactivate" : "Suspend"}
             </button>
