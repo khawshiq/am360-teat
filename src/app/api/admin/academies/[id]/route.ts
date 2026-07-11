@@ -8,7 +8,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const a = await superAuth(req); if (a.error) return a.error;
   const b = await req.json();
   const data: any = {};
-  for (const k of ["status", "subscription_plan", "subscription_status", "subscription_expires"]) if (b[k] != null) data[k] = b[k];
+  for (const k of ["status", "subscription_plan", "subscription_status"]) if (b[k] != null) data[k] = b[k];
+  // Period fields are nullable and an explicit null/"" clears them. A paid plan with no
+  // expiry never lapses (isSubscriptionExpired), which is how a permanent grant is stored.
+  for (const k of ["subscription_started", "subscription_expires"]) if (k in b) data[k] = b[k] || null;
   const res = await prisma.academy.updateMany({ where: { id: params.id }, data });
   if (res.count === 0) return fail(404, "Academy not found");
   await prisma.auditLog.create({ data: {
