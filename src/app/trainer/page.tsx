@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import BranchWorkspace from "@/components/BranchWorkspace";
+import Announcements from "@/components/Announcements";
 
 export default function TrainerWorkspace() {
   const [branches, setBranches] = useState<any[]>([]);
@@ -13,7 +14,8 @@ export default function TrainerWorkspace() {
   if (err) return <div className="err">{err}</div>;
   if (!branches.length) return <p className="muted">You have no assigned branches yet.</p>;
   return (
-    <div>
+    <div className="grid">
+      <Announcements />
       {branches.length > 1 && (
         <div className="field" style={{ maxWidth: 280 }}>
           <label>Branch</label>
