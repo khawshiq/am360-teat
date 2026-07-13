@@ -147,8 +147,25 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   const feeByStudent = useMemo(() => {
     const m: Record<string, any> = {}; for (const f of fees) if (f.month === today.slice(0, 7)) m[f.student_id] = f; return m;
   }, [fees, today]);
+
+  // Payment history rolled up per student, across every month — not just the current
+  // one. `last_paid` is the most recent payment they made; `next_due` is the earliest
+  // due date they still owe against, so the admin can see who pays next and when.
+  const historyByStudent = useMemo(() => {
+    const m: Record<string, { last_paid: string | null; next_due: string | null; outstanding: number }> = {};
+    for (const f of fees) {
+      const e = (m[f.student_id] ||= { last_paid: null, next_due: null, outstanding: 0 });
+      for (const p of f.payments || [])
+        if (p.paid_date && (!e.last_paid || p.paid_date > e.last_paid)) e.last_paid = p.paid_date;
+      if (f.status !== "paid") {
+        e.outstanding += (f.amount - f.paid_amount);
+        if (f.due_date && (!e.next_due || f.due_date < e.next_due)) e.next_due = f.due_date;
+      }
+    }
+    return m;
+  }, [fees]);
   const createFee = async (s: any) => {
-    try { await api.createFee({ student_id: s.id, amount: s.monthly_fee || 0, month: today.slice(0, 7), status: "pending" }); loadFeesTrainers(); }
+    try { await api.createFee({ student_id: s.id, amount: s.monthly_fee || 0, month: today.slice(0, 7) }); loadFeesTrainers(); }
     catch (e: any) { setErr(e.message); }
   };
   const [payTarget, setPayTarget] = useState<any>(null);
@@ -164,8 +181,18 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   const closePayModal = () => { setPayTarget(null); setErr(""); };
   const feesPager = usePager(students.length);
   const exportFees = () => downloadCsv(`fees-${branchId}-${today.slice(0, 7)}.csv`,
-    [{ key: "name", label: "Name" }, { key: "amount", label: "Amount" }, { key: "paid_amount", label: "Paid" }, { key: "status", label: "Status" }],
-    students.map(s => { const f = feeByStudent[s.id]; return { name: s.name, amount: f?.amount ?? "", paid_amount: f?.paid_amount ?? "", status: f?.status || "no record" }; }));
+    [{ key: "name", label: "Name" }, { key: "amount", label: "Amount" }, { key: "paid_amount", label: "Paid" },
+     { key: "status", label: "Status" }, { key: "due_date", label: "Due Date" },
+     { key: "last_paid", label: "Last Paid" }, { key: "next_due", label: "Next Due" },
+     { key: "outstanding", label: "Outstanding" }],
+    students.map(s => {
+      const f = feeByStudent[s.id]; const h = historyByStudent[s.id];
+      return {
+        name: s.name, amount: f?.amount ?? "", paid_amount: f?.paid_amount ?? "",
+        status: f?.status || "no record", due_date: f?.due_date || "",
+        last_paid: h?.last_paid || "", next_due: h?.next_due || "", outstanding: h?.outstanding ?? 0,
+      };
+    }));
 
   // ---- schedule ----
   const emptyScForm = { title: "", trainer_id: "", day_of_week: 0, start_time: "17:00", end_time: "18:00" };
@@ -337,16 +364,29 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
           </div>
           {students.slice(feesPager.start, feesPager.end).map(s => {
             const f = feeByStudent[s.id];
+            const h = historyByStudent[s.id];
+            const nextDueOverdue = !!h?.next_due && h.next_due < today;
             return (
               <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
-                  <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {today.slice(0, 7)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}</div></div>
+                  <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {today.slice(0, 7)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}{f?.due_date ? ` · due ${f.due_date}` : ""}</div></div>
                   <div className="row">
                     {f ? <span className={`badge ${f.status}`} style={{ textTransform: "capitalize" }}>{f.status}</span>
                       : <span className="muted" style={{ fontSize: 13 }}>no record</span>}
                     {isAdmin && !f && <button className="secondary" onClick={() => createFee(s)}>Create</button>}
                     {isAdmin && f && f.status !== "paid" && <button onClick={() => openPay(f)}>Record payment</button>}
                   </div>
+                </div>
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
+                  Last paid: {h?.last_paid || "never"}
+                  {" · "}
+                  Next due:{" "}
+                  {h?.next_due
+                    ? <span style={nextDueOverdue ? { color: "var(--danger)", fontWeight: 600 } : undefined}>
+                        {h.next_due}{nextDueOverdue ? " (overdue)" : ""}
+                      </span>
+                    : "nothing owed"}
+                  {h && h.outstanding > 0 ? ` · outstanding ₹${h.outstanding}` : ""}
                 </div>
                 {f && f.payments && f.payments.length > 0 && (
                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>

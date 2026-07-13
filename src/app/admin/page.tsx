@@ -20,6 +20,10 @@ export default function Dashboard() {
         <div className="stat"><div className="n">{d.classes_today}</div><div className="l">Classes today</div></div>
         <div className="stat"><div className="n">{inr(d.fee_collected)}</div><div className="l">Collected</div></div>
         <div className="stat"><div className="n">{inr(d.fee_pending)}</div><div className="l">Pending ({d.pending_count})</div></div>
+        <div className="stat">
+          <div className="n" style={d.overdue_count ? { color: "var(--danger)" } : undefined}>{inr(d.fee_overdue)}</div>
+          <div className="l">Overdue ({d.overdue_count})</div>
+        </div>
         <div className="stat"><div className="n">{inr(d.monthly_revenue)}</div><div className="l">This month</div></div>
       </div>
 
