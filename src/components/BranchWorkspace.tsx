@@ -6,6 +6,7 @@ import { cld } from "@/lib/cloudinary";
 import Modal from "./Modal";
 import Pager, { usePager } from "./Pager";
 import { downloadCsv } from "@/lib/csv";
+import { upcomingDueDate } from "@/lib/fees";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 type Status = "present" | "absent" | "late";
@@ -148,22 +149,32 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
     const m: Record<string, any> = {}; for (const f of fees) if (f.month === today.slice(0, 7)) m[f.student_id] = f; return m;
   }, [fees, today]);
 
-  // Payment history rolled up per student, across every month — not just the current
-  // one. `last_paid` is the most recent payment they made; `next_due` is the earliest
-  // due date they still owe against, so the admin can see who pays next and when.
+  // Payment history rolled up per student, across every month — not just the current one.
+  // `last_paid` is their most recent payment. `next_due` is the earliest date they still
+  // owe against; when they owe nothing it becomes their *upcoming* billing date, derived
+  // from their admission day, so the answer is never a dead end like "nothing owed".
   const historyByStudent = useMemo(() => {
-    const m: Record<string, { last_paid: string | null; next_due: string | null; outstanding: number }> = {};
-    for (const f of fees) {
-      const e = (m[f.student_id] ||= { last_paid: null, next_due: null, outstanding: 0 });
-      for (const p of f.payments || [])
-        if (p.paid_date && (!e.last_paid || p.paid_date > e.last_paid)) e.last_paid = p.paid_date;
-      if (f.status !== "paid") {
-        e.outstanding += (f.amount - f.paid_amount);
-        if (f.due_date && (!e.next_due || f.due_date < e.next_due)) e.next_due = f.due_date;
+    const feesOf: Record<string, any[]> = {};
+    for (const f of fees) (feesOf[f.student_id] ||= []).push(f);
+
+    const m: Record<string, { last_paid: string | null; next_due: string | null; outstanding: number; upcoming: boolean }> = {};
+    for (const s of students) {
+      const fs = feesOf[s.id] || [];
+      let last_paid: string | null = null, next_due: string | null = null, outstanding = 0;
+      for (const f of fs) {
+        for (const p of f.payments || [])
+          if (p.paid_date && (!last_paid || p.paid_date > last_paid)) last_paid = p.paid_date;
+        if (f.status !== "paid") {
+          outstanding += (f.amount - f.paid_amount);
+          if (f.due_date && (!next_due || f.due_date < next_due)) next_due = f.due_date;
+        }
       }
+      const owes = !!next_due;
+      if (!owes) next_due = upcomingDueDate(s, fs.map(f => f.month), today);
+      m[s.id] = { last_paid, next_due, outstanding, upcoming: !owes };
     }
     return m;
-  }, [fees]);
+  }, [fees, students, today]);
   const createFee = async (s: any) => {
     try { await api.createFee({ student_id: s.id, amount: s.monthly_fee || 0, month: today.slice(0, 7) }); loadFeesTrainers(); }
     catch (e: any) { setErr(e.message); }
@@ -365,7 +376,9 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
           {students.slice(feesPager.start, feesPager.end).map(s => {
             const f = feeByStudent[s.id];
             const h = historyByStudent[s.id];
-            const nextDueOverdue = !!h?.next_due && h.next_due < today;
+            // Only money actually owed can be overdue. An *upcoming* billing date that has
+            // already passed means "raise this fee", not "the student is late".
+            const nextDueOverdue = !!h?.next_due && !h.upcoming && h.next_due < today;
             return (
               <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
@@ -383,9 +396,10 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                   Next due:{" "}
                   {h?.next_due
                     ? <span style={nextDueOverdue ? { color: "var(--danger)", fontWeight: 600 } : undefined}>
-                        {h.next_due}{nextDueOverdue ? " (overdue)" : ""}
+                        {h.next_due}
+                        {nextDueOverdue ? " (overdue)" : h.upcoming ? " (upcoming)" : ""}
                       </span>
-                    : "nothing owed"}
+                    : "—"}
                   {h && h.outstanding > 0 ? ` · outstanding ₹${h.outstanding}` : ""}
                 </div>
                 {f && f.payments && f.payments.length > 0 && (
