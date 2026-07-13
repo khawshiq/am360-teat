@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import Announcements from "@/components/Announcements";
 
 export default function Dashboard() {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState("");
@@ -10,6 +11,7 @@ export default function Dashboard() {
   const inr = (n: number) => "₹" + (n || 0).toLocaleString("en-IN");
   return (
     <div className="grid">
+      <Announcements />
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
         <div className="stat"><div className="n">{d.total_students}</div><div className="l">Students</div></div>
         <div className="stat"><div className="n">{d.total_trainers}</div><div className="l">Trainers</div></div>
@@ -18,6 +20,10 @@ export default function Dashboard() {
         <div className="stat"><div className="n">{d.classes_today}</div><div className="l">Classes today</div></div>
         <div className="stat"><div className="n">{inr(d.fee_collected)}</div><div className="l">Collected</div></div>
         <div className="stat"><div className="n">{inr(d.fee_pending)}</div><div className="l">Pending ({d.pending_count})</div></div>
+        <div className="stat">
+          <div className="n" style={d.overdue_count ? { color: "var(--danger)" } : undefined}>{inr(d.fee_overdue)}</div>
+          <div className="l">Overdue ({d.overdue_count})</div>
+        </div>
         <div className="stat"><div className="n">{inr(d.monthly_revenue)}</div><div className="l">This month</div></div>
       </div>
 

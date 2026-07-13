@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { adminAuth, json, fail, nowIso, todayStr } from "@/lib/api";
+import { feeStatus, withFeeStatus } from "@/lib/fees";
 import { audit } from "@/lib/audit";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -13,9 +14,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     academy_id: a.user.academy_id, fee_id: fee.id, student_id: fee.student_id, amount,
     method: b.method || "cash", paid_date: b.paid_date || todayStr(), note: b.note || "", recorded_by: a.user.id, created_at: nowIso(),
   } });
+  // A part-payment of a fee that is already past due stays overdue — it does not
+  // fall back to "pending" just because money moved.
   const paid_amount = fee.paid_amount + amount;
-  const status = paid_amount >= fee.amount ? "paid" : "pending";
+  const status = feeStatus({ ...fee, paid_amount });
   await prisma.fee.update({ where: { id: fee.id }, data: { paid_amount, status } });
   await audit(a.user, "fee.pay", "fee", fee.id, { amount, method: b.method });
-  return json(await prisma.fee.findUnique({ where: { id: fee.id }, include: { payments: true } }));
+  const updated = await prisma.fee.findUnique({ where: { id: fee.id }, include: { payments: true } });
+  return json(updated ? withFeeStatus(updated) : null);
 }

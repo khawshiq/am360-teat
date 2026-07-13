@@ -67,6 +67,7 @@ export const api = {
   payFee: (id: string, b: any) => request(`/fees/${id}/pay`, { method: "POST", ...body(b) }),
   deleteFee: (id: string) => request(`/fees/${id}`, { method: "DELETE" }),
   dashboard: () => request("/analytics/dashboard"),
+  listAnnouncements: () => request("/announcements"),
   // --- Courses & Batches ---
   listCourses: (includeInactive = false) => request(`/courses${includeInactive ? "?include_inactive=1" : ""}`),
   createCourse: (b: any) => request("/courses", { method: "POST", ...body(b) }),

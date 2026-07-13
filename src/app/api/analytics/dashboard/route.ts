@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { adminAuth, json, todayStr } from "@/lib/api";
+import { feeStatus } from "@/lib/fees";
 
 export async function GET(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
@@ -26,8 +27,13 @@ export async function GET(req: Request) {
 
   const fees = await prisma.fee.findMany({ where: { academy_id: aid } });
   const fee_collected = fees.reduce((s: number, f: any) => s + f.paid_amount, 0);
-  const pending = fees.filter((f: any) => f.status === "pending" || f.status === "overdue");
-  const fee_pending = pending.reduce((s: number, f: any) => s + (f.amount - f.paid_amount), 0);
+  // Derive, don't read the column — see src/lib/fees.ts. "Pending" here means any
+  // unpaid fee (overdue included); "overdue" is the subset that is past its due date.
+  const outstanding = (f: any) => f.amount - f.paid_amount;
+  const pending = fees.filter((f: any) => feeStatus(f) !== "paid");
+  const fee_pending = pending.reduce((s: number, f: any) => s + outstanding(f), 0);
+  const overdue = fees.filter((f: any) => feeStatus(f) === "overdue");
+  const fee_overdue = overdue.reduce((s: number, f: any) => s + outstanding(f), 0);
 
   // Monthly revenue = payments recorded this month
   const ym = today.slice(0, 7);
@@ -50,7 +56,8 @@ export async function GET(req: Request) {
   return json({
     total_students, total_trainers, total_branches: branches.length, classes_today, branch_stats,
     attendance_rate_today, present_today, marked_today: todayRecs.length,
-    fee_collected, fee_pending, pending_count: pending.length, monthly_revenue,
+    fee_collected, fee_pending, pending_count: pending.length,
+    fee_overdue, overdue_count: overdue.length, monthly_revenue,
     attendance_trend: Object.values(trendMap), trainer_performance,
   });
 }
