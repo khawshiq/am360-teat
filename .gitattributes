@@ -1,0 +1,3 @@
+# Shell scripts must keep LF endings — CRLF breaks the shebang ("bad interpreter: bash^M")
+# when the hook is run from Git Bash on a Windows checkout.
+*.sh text eol=lf
