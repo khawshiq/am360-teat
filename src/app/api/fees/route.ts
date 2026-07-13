@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { auth, adminAuth, json, fail, nowIso, trainerBranchIds } from "@/lib/api";
-import { endOfMonth, feeStatus, withFeeStatus } from "@/lib/fees";
+import { billingAnchorDay, dueDateFor, feeStatus, withFeeStatus } from "@/lib/fees";
 import { audit } from "@/lib/audit";
 
 export async function GET(req: Request) {
@@ -22,10 +22,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
   const b = await req.json();
-  if (!(await prisma.student.findFirst({ where: { id: b.student_id, academy_id: a.user.academy_id } }))) return fail(404, "Student not found");
-  // Default the due date to the end of the fee's month, so a fee always has one to
-  // fall overdue against. Without this the whole overdue path is dead code.
-  const due_date = b.due_date || endOfMonth(b.month);
+  const student = await prisma.student.findFirst({ where: { id: b.student_id, academy_id: a.user.academy_id } });
+  if (!student) return fail(404, "Student not found");
+  // The fee falls due on the student's billing anniversary — the day of the month they
+  // were admitted — clamped to the month's length. A fee always gets a due date, because
+  // without one the whole overdue path is dead code.
+  const due_date = b.due_date || dueDateFor(b.month, billingAnchorDay(student));
   const fee = await prisma.fee.create({ data: {
     academy_id: a.user.academy_id, student_id: b.student_id, type: b.type || "monthly", amount: b.amount,
     paid_amount: 0, month: b.month, due_date, note: b.note || "", created_at: nowIso(),
