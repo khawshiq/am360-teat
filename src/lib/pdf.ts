@@ -92,11 +92,11 @@ const A4 = { w: 595.28, h: 841.89 };
 // Keep them in step with globals.css — the export is the academy's letterhead, and a
 // blue header band on a violet-branded app looks like someone else's document.
 const INK = "0.11 0.106 0.227";      // --text   #1c1b3a
-const MUTED = "0.42 0.42 0.561";     // --muted  #6b6b8f
+const MUTED = "0.388 0.388 0.549";   // --muted  #63638c
 const FAINT = "0.612 0.612 0.733";   // --faint  #9c9cbb
 const ACCENT = "0.424 0.361 0.906";  // --accent #6c5ce7
-const ZEBRA = "0.969 0.973 0.996";   // --surface-2 #f7f8fe
-const LINE = "0.886 0.894 0.957";    // --border #e2e4f4
+const ZEBRA = "0.961 0.969 0.984";   // --surface-2 #f5f7fb
+const LINE = "0.859 0.878 0.925";    // --border #dbe0ec
 
 export function buildPdf(doc: Doc): Buffer {
   const PW = doc.landscape ? A4.h : A4.w;
