@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { sa } from "@/lib/saclient";
+import FeeDueDateBackfill from "@/components/FeeDueDateBackfill";
 
 export default function SuperAdminDashboard() {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState("");
@@ -22,6 +23,7 @@ export default function SuperAdminDashboard() {
         <div className="stat"><div className="n">{inr(d.revenue_month)}</div><div className="l">Revenue this month</div></div>
         <div className="stat"><div className="n">{inr(d.revenue_total)}</div><div className="l">Revenue total</div></div>
       </div>
+      <FeeDueDateBackfill />
     </div>
   );
 }
