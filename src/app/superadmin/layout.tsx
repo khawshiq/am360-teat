@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sa, saToken } from "@/lib/saclient";
 import NavTabs, { type Tab } from "@/components/NavTabs";
+import Logo from "@/components/Logo";
 
 const TABS: Tab[] = [
   { label: "Dashboard", href: "/superadmin", icon: "dashboard" },
@@ -35,8 +36,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       <div className="topbar">
         <Link href="/superadmin">
           <div className="logo">
-            <span className="mark">A</span>
-            <span>AM<span className="grad"> 360</span></span>
+            <Logo variant="white" height={34} />
             <span className="badge on-blue">Platform</span>
           </div>
         </Link>

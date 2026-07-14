@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth";
+import Logo from "@/components/Logo";
 
 export default function Welcome() {
   const { user, loading } = useAuth();
@@ -14,8 +15,8 @@ export default function Welcome() {
   return (
     <div className="center">
       <div className="card" style={{ maxWidth: 420, textAlign: "center" }}>
-        <div className="brand">AM <span>360</span></div>
-        <p className="muted" style={{ marginTop: 8 }}>Complete Academy Management</p>
+        {/* The lockup already says "Complete Academy Management" — no tagline under it. */}
+        <div style={{ display: "flex", justifyContent: "center" }}><Logo height={56} /></div>
         <div className="grid" style={{ marginTop: 24 }}>
           <Link href="/register"><button style={{ width: "100%" }}>Create an academy</button></Link>
           <Link href="/login"><button className="secondary" style={{ width: "100%" }}>Sign in</button></Link>

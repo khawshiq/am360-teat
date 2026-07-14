@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
+import Logo from "@/components/Logo";
 import { useAuth } from "@/context/auth";
 
 export default function ChangePassword() {
@@ -21,8 +22,8 @@ export default function ChangePassword() {
   return (
     <div className="center">
       <div className="card" style={{ width: "100%", maxWidth: 380 }}>
-        <div className="brand">AM <span>360</span></div>
-        <p className="muted" style={{ marginBottom: 20 }}>Set a new password</p>
+        <Logo height={40} />
+        <p className="muted" style={{ margin: "14px 0 20px" }}>Set a new password</p>
         <div className="field"><label>Current / temporary password</label><input type="password" value={cur} onChange={e => setCur(e.target.value)} /></div>
         <div className="field"><label>New password</label><input type="password" value={nw} onChange={e => setNw(e.target.value)} /></div>
         {err && <div className="err">{err}</div>}

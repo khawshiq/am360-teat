@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { sa, saToken } from "@/lib/saclient";
+import Logo from "@/components/Logo";
 
 export default function SuperAdminLogin() {
   const router = useRouter();
@@ -15,8 +16,8 @@ export default function SuperAdminLogin() {
   return (
     <div className="center">
       <div className="card" style={{ width: "100%", maxWidth: 380 }}>
-        <div className="brand">AM <span>360</span></div>
-        <p className="muted" style={{ marginBottom: 20 }}>Platform Super Admin</p>
+        <Logo height={40} />
+        <p className="muted" style={{ margin: "14px 0 20px" }}>Platform Super Admin</p>
         <div className="field"><label>Email</label><input value={email} onChange={e => setEmail(e.target.value)} /></div>
         <div className="field"><label>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} /></div>
         {err && <div className="err">{err}</div>}
