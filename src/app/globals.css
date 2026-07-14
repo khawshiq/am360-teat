@@ -338,6 +338,41 @@ button:disabled:hover { background: var(--accent); }
 }
 .stat-ico svg { position: relative; width: 18px; height: 18px; display: block; }
 
+/* A clickable tile is a real <button>, so it inherits the primary-button styling —
+   solid blue, white text, centred. Undo all of it: a tile is a surface you can press,
+   not a call to action. The resets need the .stat-btn class to out-specify `button`
+   and `button:hover`. */
+button.stat-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+button.stat-btn:hover {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+}
+button.stat-btn:active { transform: translateY(0); }
+button.stat-btn:focus-visible { box-shadow: var(--ring); border-color: var(--tone); }
+
+/* The chevron: the affordance that says this number opens something. It sits top-right,
+   opposite the icon chip, and leans in on hover. */
+.stat-go {
+  position: absolute;
+  top: var(--s5); right: var(--s4);
+  width: 18px; height: 18px;
+  color: var(--faint);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.stat-go svg { width: 100%; height: 100%; display: block; }
+button.stat-btn:hover .stat-go { color: var(--tone); transform: translateX(2px); }
+
 .stat.t-blue    { --tone: var(--c-blue); }
 .stat.t-violet  { --tone: var(--c-violet); }
 .stat.t-cyan    { --tone: var(--c-cyan); }
