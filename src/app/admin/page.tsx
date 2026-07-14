@@ -1,14 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { useAuth } from "@/context/auth";
+import { fmtDay } from "@/lib/date";
 import Announcements from "@/components/Announcements";
-import StatTile from "@/components/StatTile";
+import StatTile, { Tone } from "@/components/StatTile";
 import Modal from "@/components/Modal";
 import Pager, { usePager } from "@/components/Pager";
 
 type Item = { id: string; title: string; subtitle: string; value: string; tone?: string };
 
+// The identity hues only — never a status hue. A branch is a thing, not a state, and
+// a red branch chip would read as "this branch has a problem".
+const BRANCH_TONES = ["t-blue", "t-violet", "t-cyan", "t-magenta"];
+
 export default function Dashboard() {
+  const { user } = useAuth();
   const [d, setD] = useState<any>(null); const [err, setErr] = useState("");
   useEffect(() => { api.dashboard().then(setD).catch(e => setErr(e.message)); }, []);
 
@@ -32,32 +39,55 @@ export default function Dashboard() {
   if (!d) return <div className="muted">Loading dashboard…</div>;
 
   const inr = (n: number) => "₹" + (n || 0).toLocaleString("en-IN");
-  const tiles = { gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" };
+  const tiles = { gridTemplateColumns: "repeat(auto-fit,minmax(168px,1fr))" };
+
+  // Local, not toISOString(): that is UTC, and it would put yesterday's date on the
+  // dashboard for anyone east of Greenwich for part of the day — including here.
+  const n = new Date();
+  const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+  const firstName = (user?.name || "").split(" ")[0];
 
   // Attendance is a rate, so it gets a meter — and its colour is severity, not
-  // identity. But 0% before anyone has marked the register is not a crisis, it is
-  // silence: with nothing marked we show a dash and stay neutral rather than
-  // painting the tile red every morning.
+  // identity: a rate is a state. Every other tile in the row has a fixed hue.
+  // But 0% before anyone has marked the register is not a crisis, it is silence:
+  // with nothing marked we go slate and show a dash, rather than painting the tile
+  // red every morning before the trainers arrive.
   const marked = d.marked_today > 0;
   const rate = d.attendance_rate_today;
-  const attendanceTone = !marked ? "cyan" : rate >= 85 ? "good" : rate >= 60 ? "warn" : "crit";
+  const attendanceTone: Tone = !marked ? "slate" : rate >= 85 ? "good" : rate >= 40 ? "warn" : "crit";
 
   return (
     <div className="grid">
+      <div className="welcome">
+        <div>
+          <h1>Welcome back{firstName ? <>, <em>{firstName}</em></> : ""}!</h1>
+          <p>Here&rsquo;s what&rsquo;s happening in your academy today.</p>
+        </div>
+        <span className="date-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"
+               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
+          {fmtDay(today)}
+        </span>
+      </div>
+
       <Announcements />
 
       <div>
-        <div className="section-title" style={{ marginBottom: 10 }}>Academy</div>
+        <div className="section-title" style={{ marginBottom: 10 }}>Academy overview</div>
         <div className="grid" style={tiles}>
           <StatTile tone="blue" icon="students" value={d.total_students} label="Students" onClick={() => drill("students")} />
           <StatTile tone="violet" icon="trainers" value={d.total_trainers} label="Trainers" onClick={() => drill("trainers")} />
           <StatTile tone="cyan" icon="branches" value={d.total_branches} label="Branches" onClick={() => drill("branches")} />
-          <StatTile tone="magenta" icon="classes" value={d.classes_today} label="Classes today" onClick={() => drill("classes")} />
+          <StatTile tone="magenta" icon="classes" value={d.classes_today} label="Classes today"
+                    sub={d.classes_today ? undefined : "Nothing scheduled"} onClick={() => drill("classes")} />
           <StatTile
             tone={attendanceTone}
             icon="attendance"
             value={marked ? `${rate}%` : "—"}
-            label={marked ? `Attendance today (${d.present_today}/${d.marked_today})` : "Attendance today — not marked"}
+            label="Attendance today"
+            sub={marked ? `${d.present_today} of ${d.marked_today} present` : "Register not marked yet"}
             meter={marked ? rate : 0}
             onClick={() => drill("attendance")}
           />
@@ -65,15 +95,18 @@ export default function Dashboard() {
       </div>
 
       <div>
-        <div className="section-title" style={{ marginBottom: 10 }}>Fees</div>
-        {/* Collected and This month are the same metric over different windows —
+        <div className="section-title" style={{ marginBottom: 10 }}>Fees overview</div>
+        {/* White cards, on purpose. The row above is already five saturated tiles;
+            five more and the eye has nowhere to land. Here the tone rides the icon
+            chip, the value and the sparkline instead.
+
+            Collected and This month are the same metric over different windows —
             money in — so they share the "good" tone rather than inventing a hue. */}
         <div className="grid" style={tiles}>
-          <StatTile tone="good" icon="collected" value={inr(d.fee_collected)} label="Collected (all time)" onClick={() => drill("collected")} />
-          <StatTile tone="good" icon="month" value={inr(d.monthly_revenue)} label="Collected this month" onClick={() => drill("month")} />
-          <StatTile tone="warn" icon="pending" value={inr(d.fee_pending)} label={`Pending (${d.pending_count})`} onClick={() => drill("pending")} />
-          <StatTile tone="crit" icon="overdue" value={inr(d.fee_overdue)} label={`Overdue (${d.overdue_count})`}
-                    alarm={d.overdue_count > 0} onClick={() => drill("overdue")} />
+          <StatTile wave tone="good" icon="collected" value={inr(d.fee_collected)} label="Collected (all time)" onClick={() => drill("collected")} />
+          <StatTile wave tone="good" icon="month" value={inr(d.monthly_revenue)} label="Collected this month" onClick={() => drill("month")} />
+          <StatTile wave tone="warn" icon="pending" value={inr(d.fee_pending)} label={`Pending (${d.pending_count})`} onClick={() => drill("pending")} />
+          <StatTile wave tone="crit" icon="overdue" value={inr(d.fee_overdue)} label={`Overdue (${d.overdue_count})`} onClick={() => drill("overdue")} />
         </div>
       </div>
 
@@ -86,22 +119,27 @@ export default function Dashboard() {
         </div>
         {/* Fixed 0–100 scale: auto-scaling to the tallest bar would make a 4% day
             look like a full house. Single series, so no legend — the title says it. */}
-        <div className="chart">
-          <div className="chart-ceiling"><span>100%</span></div>
-          {d.attendance_trend.map((t: any) => {
-            const pct = t.total ? (t.present / t.total) * 100 : 0;
-            const shown = Math.round(pct);
-            return (
-              <div key={t.date} className="chart-col"
-                   title={t.total ? `${t.date}: ${shown}% present (${t.present}/${t.total})` : `${t.date}: not marked`}>
-                <div className="chart-track">
-                  {t.total > 0 && <span className="chart-v">{shown}%</span>}
-                  <div className="chart-bar" style={{ height: `${pct}%` }} />
+        <div className="chart-wrap">
+          <div className="chart-y" aria-hidden="true">
+            <span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span>
+          </div>
+          <div className="chart">
+            <div className="chart-grid" aria-hidden="true"><i /><i /><i /><i /><i /></div>
+            {d.attendance_trend.map((t: any) => {
+              const pct = t.total ? (t.present / t.total) * 100 : 0;
+              const shown = Math.round(pct);
+              return (
+                <div key={t.date} className="chart-col"
+                     title={t.total ? `${fmtDay(t.date)}: ${shown}% present (${t.present}/${t.total})` : `${fmtDay(t.date)}: not marked`}>
+                  <div className="chart-track">
+                    {t.total > 0 && <span className="chart-v">{shown}%</span>}
+                    <div className="chart-bar" style={{ height: `${pct}%` }} />
+                  </div>
+                  <div className="chart-x">{t.date.slice(5)}</div>
                 </div>
-                <div className="chart-x">{t.date.slice(5)}</div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -109,10 +147,20 @@ export default function Dashboard() {
         <div className="section-head">
           <span className="section-title">Branch overview</span>
         </div>
-        {d.branch_stats.map((b: any) => (
+        {d.branch_stats.map((b: any, i: number) => (
           <div className="list-item" key={b.branch_id}>
-            <span style={{ fontWeight: 500 }}>{b.name}</span>
-            <span className="muted" style={{ fontSize: 13 }}>{b.students} students · {b.trainers} trainers</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              {/* The chip's hue comes from the row's position, so a branch keeps the
+                  same colour on every render. It is a name-tag, not a status. */}
+              <span className={`row-ico ${BRANCH_TONES[i % BRANCH_TONES.length]}`} aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                     strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 21h18" /><path d="M5 21V7l7-4 7 4v14" /><path d="M10 21v-6h4v6" />
+                </svg>
+              </span>
+              <span style={{ fontWeight: 600 }}>{b.name}</span>
+            </div>
+            <span className="row-stat"><b>{b.students}</b> students · <b>{b.trainers}</b> trainers</span>
           </div>
         ))}
         {!d.branch_stats.length && <p className="empty">No branches yet.</p>}

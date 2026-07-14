@@ -1,19 +1,27 @@
 "use client";
 
-// A dashboard KPI tile: colour on a left edge and an icon chip, value in ink.
+// A dashboard KPI tile, in two variants.
 //
-// The `tone` is not decoration — it says what KIND of number this is:
-//   blue / violet / cyan / magenta  → IDENTITY. Which thing is this (Students,
-//     Trainers, Branches, Classes)? Four hues, validated as colourblind-separable
-//     against each other AND against the status colours.
-//   good / warn / crit              → STATUS. How is this doing (Collected,
-//     Pending, Overdue)? Reserved — never use one for identity, or a red tile
-//     stops meaning "something is wrong".
-// See the tokens in globals.css.
+//   solid — the whole card is a gradient of the tone, text in white. The Academy row.
+//   wave  — a WHITE card: the tone lives in the icon chip, the value, and a sparkline
+//           along the bottom. The Fees row.
 //
-// Pass `onClick` and the tile becomes a real <button>: keyboard-focusable, with a
-// chevron that says so. A div with a click handler is not a button — it cannot be
-// tabbed to and screen readers do not announce it.
+// The split is not decorative. Five saturated cards in a row emphasise nothing, so the
+// money tiles stay white and let the coloured row above them lead. And a white card is
+// the only place a tone can be the VALUE's colour, which is what makes "₹0 overdue"
+// read as red money rather than as a red box.
+//
+// The `tone` says what KIND of number this is:
+//   blue / violet / cyan / magenta  → IDENTITY. Which thing (Students, Trainers,
+//     Branches, Classes)? Validated colourblind-separable against each other and
+//     against the status hues.
+//   good / warn / crit              → STATUS. How is this doing? Reserved — never use
+//     one for identity, or a red tile stops meaning "something is wrong".
+//   slate                           → no data yet. Not a status; an absence.
+//
+// Every tile carries an icon AND a text label. That is load-bearing, not polish: the
+// blue and violet tiles sit at ΔE 11.8 under deuteranopia, which the palette rules
+// allow ONLY when colour is not the sole channel. Do not ship a tile without a label.
 
 const ICONS: Record<string, JSX.Element> = {
   students: <><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M17 8.2A2.8 2.8 0 0 1 17 13" /><path d="M18 20a5.6 5.6 0 0 0-2-4.3" /></>,
@@ -27,23 +35,27 @@ const ICONS: Record<string, JSX.Element> = {
   month: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></>,
 };
 
-export type Tone = "blue" | "violet" | "cyan" | "magenta" | "good" | "warn" | "crit";
+export type Tone = "blue" | "violet" | "cyan" | "magenta" | "good" | "warn" | "crit" | "slate";
 
 export default function StatTile({
-  tone, icon, value, label, alarm = false, meter, onClick,
+  tone, icon, value, label, sub, meter, wave = false, onClick,
 }: {
   tone: Tone;
   icon: keyof typeof ICONS;
   value: React.ReactNode;
   label: string;
-  /** Overdue money only: paint the value red. It keeps its icon and its label, so
-   *  it is never colour-alone. */
-  alarm?: boolean;
-  /** 0–100. Renders a track+fill under the value, for a rate rather than a count. */
+  /** The quiet line under the label — "5 this month", "0 scheduled". Context, not
+   *  a second number competing with the first. */
+  sub?: string;
+  /** 0–100. A track+fill under the value, for a rate rather than a count. */
   meter?: number;
+  /** White card + coloured chip + sparkline, instead of a gradient fill. */
+  wave?: boolean;
   /** Makes the tile a button that drills into the rows behind the number. */
   onClick?: () => void;
 }) {
+  const cls = `stat t-${tone} ${wave ? "wave" : "solid"}`;
+
   const inner = (
     <>
       <span className="stat-ico" aria-hidden="true">
@@ -52,21 +64,23 @@ export default function StatTile({
           {ICONS[icon]}
         </svg>
       </span>
-      <div className={alarm ? "n alarm" : "n"}>{value}</div>
+      <div className="n">{value}</div>
       <div className="l">{label}</div>
+      {sub && <div className="stat-sub">{sub}</div>}
       {meter !== undefined && (
         <div className="meter" role="progressbar" aria-valuenow={Math.round(meter)}
              aria-valuemin={0} aria-valuemax={100} aria-label={label}>
           <div className="meter-fill" style={{ width: `${Math.max(0, Math.min(100, meter))}%` }} />
         </div>
       )}
+      {wave && <Wave id={icon} />}
     </>
   );
 
-  if (!onClick) return <div className={`stat t-${tone}`}>{inner}</div>;
+  if (!onClick) return <div className={cls}>{inner}</div>;
 
   return (
-    <button type="button" className={`stat t-${tone} stat-btn`} onClick={onClick}
+    <button type="button" className={`${cls} stat-btn`} onClick={onClick}
             aria-label={`${label} — show details`}>
       {inner}
       <span className="stat-go" aria-hidden="true">
@@ -74,5 +88,30 @@ export default function StatTile({
              strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
       </span>
     </button>
+  );
+}
+
+// The sparkline along the bottom of a money tile. It is DECORATION, and honest about
+// it: a real trend line would need a real series, and the dashboard endpoint returns a
+// total, not a history. So this is a fixed curve — the same shape on every tile — and
+// it is aria-hidden. If a trend series ever lands, feed it in here; until then, do not
+// let it imply a movement nobody measured.
+function Wave({ id }: { id: string }) {
+  const gid = `wave-${id}`;
+  const d = "M0,34 C28,16 52,44 84,30 C118,15 146,40 175,24 L200,18";
+  return (
+    <span className="stat-wave" aria-hidden="true">
+      <svg viewBox="0 0 200 52" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={`${d} L200,52 L0,52 Z`} fill={`url(#${gid})`} />
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" opacity="0.75" />
+      </svg>
+    </span>
   );
 }
