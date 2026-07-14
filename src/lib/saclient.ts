@@ -32,4 +32,6 @@ export const sa = {
   updatePlan: (id: string, b: any) => request(`/plans/${id}`, { method: "PATCH", ...body(b) }),
   listAnnouncements: () => request("/announcements"),
   createAnnouncement: (b: any) => request("/announcements", { method: "POST", ...body(b) }),
+  // Preview with apply=false (writes nothing); commit with apply=true.
+  backfillFeeDueDates: (apply: boolean) => request("/maintenance/fee-due-dates", { method: "POST", ...body({ apply }) }),
 };
