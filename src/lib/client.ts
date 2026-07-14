@@ -28,6 +28,29 @@ async function request(path: string, options: RequestInit = {}, withAuth = true)
 }
 const body = (b: any) => ({ body: JSON.stringify(b) });
 
+// File downloads (exports). Can't be a plain <a href> — the API is Bearer-authed, and a
+// link sends no Authorization header. So we fetch the bytes, then hand the browser a
+// blob. On failure the body is still JSON, so a 402 keeps driving the upgrade popup.
+async function requestFile(path: string): Promise<{ blob: Blob; filename: string }> {
+  const t = tokenStore.get();
+  const res = await fetch(`/api${path}`, { headers: t ? { Authorization: `Bearer ${t}` } : {} });
+  if (!res.ok) {
+    let data: any = null;
+    try { data = await res.json(); } catch { /* non-JSON error body */ }
+    const err: any = new Error((data && data.detail) || `Export failed (${res.status})`);
+    err.status = res.status; err.code = data?.code; err.feature = data?.feature;
+    err.resource = data?.resource; err.limit = data?.limit;
+    if (err.code === "PLAN_LIMIT" && typeof window !== "undefined")
+      window.dispatchEvent(new CustomEvent("am360:plan-limit", {
+        detail: { resource: err.resource, limit: err.limit, feature: err.feature, message: err.message },
+      }));
+    throw err;
+  }
+  const cd = res.headers.get("Content-Disposition") || "";
+  const filename = /filename="([^"]+)"/.exec(cd)?.[1] || "export";
+  return { blob: await res.blob(), filename };
+}
+
 export const api = {
   registerOwner: (b: any) => request("/auth/register-owner", { method: "POST", ...body(b) }, false),
   login: (b: any) => request("/auth/login", { method: "POST", ...body(b) }, false),
@@ -69,6 +92,13 @@ export const api = {
   dashboard: () => request("/analytics/dashboard"),
   // The rows behind a dashboard tile — what a tile shows when you click it.
   breakdown: (metric: string) => request(`/analytics/breakdown?metric=${encodeURIComponent(metric)}`),
+  // Server-rendered export. CSV is free; xlsx/pdf need Plan.features.export (402 → popup).
+  exportReport: (p: { type: "students" | "attendance" | "fees"; format: "csv" | "xlsx" | "pdf"; branch_id?: string; date?: string }) => {
+    const q = new URLSearchParams({ type: p.type, format: p.format });
+    if (p.branch_id) q.set("branch_id", p.branch_id);
+    if (p.date) q.set("date", p.date);
+    return requestFile(`/exports?${q}`);
+  },
   listAnnouncements: () => request("/announcements"),
   // --- Courses & Batches ---
   listCourses: (includeInactive = false) => request(`/courses${includeInactive ? "?include_inactive=1" : ""}`),

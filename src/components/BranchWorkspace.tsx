@@ -5,7 +5,7 @@ import { useImageUpload } from "@/lib/useImageUpload";
 import { cld } from "@/lib/cloudinary";
 import Modal from "./Modal";
 import Pager, { usePager } from "./Pager";
-import { downloadCsv } from "@/lib/csv";
+import ExportMenu from "./ExportMenu";
 import { upcomingDueDate } from "@/lib/fees";
 import { fmtDay, fmtMonth } from "@/lib/date";
 
@@ -115,13 +115,6 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
     catch (e: any) { setErr(e.message); }
   };
   const studentsPager = usePager(students.length);
-  const exportStudents = () => downloadCsv(`students-${branchId}.csv`, [
-    { key: "name", label: "Name" }, { key: "phone", label: "Phone" }, { key: "alt_mobile", label: "Alt Mobile" },
-    { key: "email", label: "Email" }, { key: "parent_name", label: "Parent Name" }, { key: "address", label: "Address" },
-    { key: "dob", label: "DOB" }, { key: "gender", label: "Gender" }, { key: "admission_date", label: "Admission Date" },
-    { key: "batch", label: "Batch" }, { key: "course", label: "Course" }, { key: "monthly_fee", label: "Monthly Fee" },
-    { key: "emergency_contact", label: "Emergency Contact" }, { key: "status", label: "Status" },
-  ], students);
 
   // ---- attendance ----
   const toggle = (id: string) => { if (isToday) { setAttendance(p => ({ ...p, [id]: cycle(p[id]) })); setAttendanceDirty(true); } };
@@ -141,9 +134,6 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
       setAttendanceDirty(false);
     } catch (e: any) { setErr(e.message); }
   };
-  const exportAttendance = () => downloadCsv(`attendance-${branchId}-${viewDate}.csv`,
-    [{ key: "name", label: "Name" }, { key: "status", label: "Status" }],
-    students.map(s => ({ name: s.name, status: attendance[s.id] || "no record" })));
 
   // ---- fees ----
   const feeByStudent = useMemo(() => {
@@ -192,20 +182,6 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   };
   const closePayModal = () => { setPayTarget(null); setErr(""); };
   const feesPager = usePager(students.length);
-  const exportFees = () => downloadCsv(`fees-${branchId}-${today.slice(0, 7)}.csv`,
-    [{ key: "name", label: "Name" }, { key: "amount", label: "Amount" }, { key: "paid_amount", label: "Paid" },
-     { key: "status", label: "Status" }, { key: "due_date", label: "Fee Due" },
-     { key: "last_paid", label: "Last Paid" }, { key: "next_due", label: "Next Due" },
-     { key: "outstanding", label: "Outstanding" }],
-    students.map(s => {
-      const f = feeByStudent[s.id]; const h = historyByStudent[s.id];
-      return {
-        name: s.name, amount: f?.amount ?? "", paid_amount: f?.paid_amount ?? "",
-        status: f?.status || "no record", due_date: f?.due_date ? fmtDay(f.due_date) : "",
-        last_paid: h?.last_paid ? fmtDay(h.last_paid) : "",
-        next_due: h?.next_due ? fmtDay(h.next_due) : "", outstanding: h?.outstanding ?? 0,
-      };
-    }));
 
   // ---- schedule ----
   const emptyScForm = { title: "", trainer_id: "", day_of_week: 0, start_time: "17:00", end_time: "18:00" };
@@ -239,7 +215,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
           <div className="row" style={{ marginBottom: 14, justifyContent: "space-between" }}>
             <div className="row">
               <button onClick={openAddStudent}>Add student</button>
-              <button className="secondary" onClick={exportStudents} disabled={!students.length}>Export CSV</button>
+              <ExportMenu type="students" branchId={branchId} disabled={!students.length} />
             </div>
             <label className="row" style={{ fontSize: 13, gap: 6 }}>
               <input type="checkbox" checked={showInactiveStudents} onChange={e => setShowInactiveStudents(e.target.checked)} /> Show inactive
@@ -335,7 +311,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
             <div className="row">
               {isToday && <button className="secondary" onClick={markAll}>Mark all present</button>}
               {isToday && <button onClick={save}>Save</button>}
-              <button className="secondary" onClick={exportAttendance} disabled={!students.length}>Export CSV</button>
+              <ExportMenu type="attendance" branchId={branchId} date={viewDate} disabled={!students.length} />
               {!isToday && <span className="muted" style={{ fontSize: 13, alignSelf: "center" }}>Viewing past date — read only</span>}
             </div>
           </div>
@@ -373,7 +349,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
       {tab === "fees" && (
         <div>
           <div className="row" style={{ marginBottom: 14 }}>
-            <button className="secondary" onClick={exportFees} disabled={!students.length}>Export CSV</button>
+            <ExportMenu type="fees" branchId={branchId} disabled={!students.length} />
           </div>
           {students.slice(feesPager.start, feesPager.end).map(s => {
             const f = feeByStudent[s.id];
