@@ -67,6 +67,8 @@ export const api = {
   payFee: (id: string, b: any) => request(`/fees/${id}/pay`, { method: "POST", ...body(b) }),
   deleteFee: (id: string) => request(`/fees/${id}`, { method: "DELETE" }),
   dashboard: () => request("/analytics/dashboard"),
+  // The rows behind a dashboard tile — what a tile shows when you click it.
+  breakdown: (metric: string) => request(`/analytics/breakdown?metric=${encodeURIComponent(metric)}`),
   listAnnouncements: () => request("/announcements"),
   // --- Courses & Batches ---
   listCourses: (includeInactive = false) => request(`/courses${includeInactive ? "?include_inactive=1" : ""}`),

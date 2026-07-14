@@ -10,6 +10,10 @@
 //     Pending, Overdue)? Reserved — never use one for identity, or a red tile
 //     stops meaning "something is wrong".
 // See the tokens in globals.css.
+//
+// Pass `onClick` and the tile becomes a real <button>: keyboard-focusable, with a
+// chevron that says so. A div with a click handler is not a button — it cannot be
+// tabbed to and screen readers do not announce it.
 
 const ICONS: Record<string, JSX.Element> = {
   students: <><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M17 8.2A2.8 2.8 0 0 1 17 13" /><path d="M18 20a5.6 5.6 0 0 0-2-4.3" /></>,
@@ -26,7 +30,7 @@ const ICONS: Record<string, JSX.Element> = {
 export type Tone = "blue" | "violet" | "cyan" | "magenta" | "good" | "warn" | "crit";
 
 export default function StatTile({
-  tone, icon, value, label, alarm = false, meter,
+  tone, icon, value, label, alarm = false, meter, onClick,
 }: {
   tone: Tone;
   icon: keyof typeof ICONS;
@@ -37,9 +41,11 @@ export default function StatTile({
   alarm?: boolean;
   /** 0–100. Renders a track+fill under the value, for a rate rather than a count. */
   meter?: number;
+  /** Makes the tile a button that drills into the rows behind the number. */
+  onClick?: () => void;
 }) {
-  return (
-    <div className={`stat t-${tone}`}>
+  const inner = (
+    <>
       <span className="stat-ico" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
              strokeLinecap="round" strokeLinejoin="round">
@@ -54,6 +60,19 @@ export default function StatTile({
           <div className="meter-fill" style={{ width: `${Math.max(0, Math.min(100, meter))}%` }} />
         </div>
       )}
-    </div>
+    </>
+  );
+
+  if (!onClick) return <div className={`stat t-${tone}`}>{inner}</div>;
+
+  return (
+    <button type="button" className={`stat t-${tone} stat-btn`} onClick={onClick}
+            aria-label={`${label} — show details`}>
+      {inner}
+      <span className="stat-go" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+      </span>
+    </button>
   );
 }
