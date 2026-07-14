@@ -7,6 +7,7 @@ import Modal from "./Modal";
 import Pager, { usePager } from "./Pager";
 import { downloadCsv } from "@/lib/csv";
 import { upcomingDueDate } from "@/lib/fees";
+import { fmtDay, fmtMonth } from "@/lib/date";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 type Status = "present" | "absent" | "late";
@@ -193,15 +194,16 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   const feesPager = usePager(students.length);
   const exportFees = () => downloadCsv(`fees-${branchId}-${today.slice(0, 7)}.csv`,
     [{ key: "name", label: "Name" }, { key: "amount", label: "Amount" }, { key: "paid_amount", label: "Paid" },
-     { key: "status", label: "Status" }, { key: "due_date", label: "Due Date" },
+     { key: "status", label: "Status" }, { key: "due_date", label: "Fee Due" },
      { key: "last_paid", label: "Last Paid" }, { key: "next_due", label: "Next Due" },
      { key: "outstanding", label: "Outstanding" }],
     students.map(s => {
       const f = feeByStudent[s.id]; const h = historyByStudent[s.id];
       return {
         name: s.name, amount: f?.amount ?? "", paid_amount: f?.paid_amount ?? "",
-        status: f?.status || "no record", due_date: f?.due_date || "",
-        last_paid: h?.last_paid || "", next_due: h?.next_due || "", outstanding: h?.outstanding ?? 0,
+        status: f?.status || "no record", due_date: f?.due_date ? fmtDay(f.due_date) : "",
+        last_paid: h?.last_paid ? fmtDay(h.last_paid) : "",
+        next_due: h?.next_due ? fmtDay(h.next_due) : "", outstanding: h?.outstanding ?? 0,
       };
     }));
 
@@ -377,12 +379,17 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
             const f = feeByStudent[s.id];
             const h = historyByStudent[s.id];
             // Only money actually owed can be overdue. An *upcoming* billing date that has
-            // already passed means "raise this fee", not "the student is late".
-            const nextDueOverdue = !!h?.next_due && !h.upcoming && h.next_due < today;
+            // already passed is not a late student — it is a fee nobody raised yet, so it
+            // says so, in amber rather than red.
+            const late = !!h?.next_due && !h.upcoming && h.next_due < today;
+            const notRaised = !!h?.next_due && h.upcoming && h.next_due < today;
+            const nextDueNote = late ? " (overdue)" : notRaised ? " (fee not raised)" : h?.upcoming ? " (upcoming)" : "";
+            const nextDueStyle = late ? { color: "var(--danger)", fontWeight: 600 }
+              : notRaised ? { color: "var(--warn)", fontWeight: 600 } : undefined;
             return (
               <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
-                  <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {today.slice(0, 7)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}{f?.due_date ? ` · due ${f.due_date}` : ""}</div></div>
+                  <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {fmtMonth(today)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}</div></div>
                   <div className="row">
                     {f ? <span className={`badge ${f.status}`} style={{ textTransform: "capitalize" }}>{f.status}</span>
                       : <span className="muted" style={{ fontSize: 13 }}>no record</span>}
@@ -390,22 +397,19 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                     {isAdmin && f && f.status !== "paid" && <button onClick={() => openPay(f)}>Record payment</button>}
                   </div>
                 </div>
-                <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-                  Last paid: {h?.last_paid || "never"}
-                  {" · "}
-                  Next due:{" "}
-                  {h?.next_due
-                    ? <span style={nextDueOverdue ? { color: "var(--danger)", fontWeight: 600 } : undefined}>
-                        {h.next_due}
-                        {nextDueOverdue ? " (overdue)" : h.upcoming ? " (upcoming)" : ""}
-                      </span>
-                    : "—"}
-                  {h && h.outstanding > 0 ? ` · outstanding ₹${h.outstanding}` : ""}
+                {/* The three dates that answer the whole question: when this month's fee fell
+                    due, when they last actually paid, and when they next owe. All three are
+                    anchored on the student's admission day, so they can never disagree. */}
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 4, display: "flex", flexWrap: "wrap", gap: "2px 14px" }}>
+                  <span>Fee due: {f ? fmtDay(f.due_date) : "—"}</span>
+                  <span>Last paid: {h?.last_paid ? fmtDay(h.last_paid) : "never"}</span>
+                  <span>Next due: <span style={nextDueStyle}>{fmtDay(h?.next_due)}{nextDueNote}</span></span>
+                  {h && h.outstanding > 0 ? <span style={{ color: "var(--danger)" }}>Outstanding: ₹{h.outstanding}</span> : null}
                 </div>
                 {f && f.payments && f.payments.length > 0 && (
                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
                     {f.payments.map((p: any) => (
-                      <div key={p.id} className="muted" style={{ fontSize: 13 }}>₹{p.amount} · {p.method} · {p.paid_date}{p.note ? ` · ${p.note}` : ""}</div>
+                      <div key={p.id} className="muted" style={{ fontSize: 13 }}>{fmtDay(p.paid_date)} · ₹{p.amount} · {p.method}{p.note ? ` · ${p.note}` : ""}</div>
                     ))}
                   </div>
                 )}

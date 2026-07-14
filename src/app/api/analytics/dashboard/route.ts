@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { adminAuth, json, todayStr } from "@/lib/api";
-import { feeStatus } from "@/lib/fees";
+import { feeStatusFor } from "@/lib/fees";
 
 export async function GET(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
@@ -27,12 +27,19 @@ export async function GET(req: Request) {
 
   const fees = await prisma.fee.findMany({ where: { academy_id: aid } });
   const fee_collected = fees.reduce((s: number, f: any) => s + f.paid_amount, 0);
-  // Derive, don't read the column — see src/lib/fees.ts. "Pending" here means any
-  // unpaid fee (overdue included); "overdue" is the subset that is past its due date.
+  // Derive, don't read the column — see src/lib/fees.ts. Grade each fee against its
+  // *anchored* due date (the student's admission day), the same date the fees screen shows,
+  // so the dashboard's overdue count can't disagree with the cards it links to. "Pending"
+  // means any unpaid fee (overdue included); "overdue" is the subset past its due date.
+  const anchors = new Map((await prisma.student.findMany({
+    where: { academy_id: aid },
+    select: { id: true, admission_date: true, join_date: true },
+  })).map((s: any) => [s.id, s]));
   const outstanding = (f: any) => f.amount - f.paid_amount;
-  const pending = fees.filter((f: any) => feeStatus(f) !== "paid");
+  const statusOf = (f: any) => feeStatusFor(f, anchors.get(f.student_id));
+  const pending = fees.filter((f: any) => statusOf(f) !== "paid");
   const fee_pending = pending.reduce((s: number, f: any) => s + outstanding(f), 0);
-  const overdue = fees.filter((f: any) => feeStatus(f) === "overdue");
+  const overdue = fees.filter((f: any) => statusOf(f) === "overdue");
   const fee_overdue = overdue.reduce((s: number, f: any) => s + outstanding(f), 0);
 
   // Monthly revenue = payments recorded this month

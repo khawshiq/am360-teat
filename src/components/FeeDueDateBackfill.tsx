@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { sa } from "@/lib/saclient";
+import { fmtDay, fmtMonth } from "@/lib/date";
 
 // One-off maintenance control (Super Admin). Re-anchors existing fees onto the student's
 // admission-day billing cycle. Preview always runs first and writes nothing — the Apply
@@ -74,7 +75,7 @@ export default function FeeDueDateBackfill() {
               </div>
               {res.sample.map((c: any) => (
                 <div key={c.id} className="muted" style={{ fontSize: 12.5 }}>
-                  {c.student} · {c.month} · {c.from || "no date"} → <b style={{ color: "var(--text)" }}>{c.to}</b>
+                  {c.student} · {fmtMonth(c.month)} · {c.from ? fmtDay(c.from) : "no date"} → <b style={{ color: "var(--text)" }}>{fmtDay(c.to)}</b>
                   {c.was !== c.status ? ` (${c.was} → ${c.status})` : ""}
                 </div>
               ))}

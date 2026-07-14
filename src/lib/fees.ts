@@ -59,6 +59,18 @@ export function dueDateFor(month: string | null | undefined, anchorDay: number |
 // Legacy rows carry no due_date; fall back to the end of their month so they still grade.
 export const feeDueDate = (fee: FeeLike): string | null => fee.due_date || endOfMonth(fee.month);
 
+// THE due date of a fee: the student's billing anniversary inside that fee's month.
+//
+// The `due_date` column is a cache, not the truth. Rows written before the anchoring rule
+// existed carry an end-of-month date (or none), so a student admitted on the 20th would see
+// "due 31 Jul" on the fee and "next due 20 Aug" underneath it — the same cycle, dated two
+// different ways. The anchor is the one rule; the column is only the fallback for a student
+// whose admission and join dates we don't have.
+export function anchoredDueDate(fee: FeeLike, student: StudentLike | null | undefined): string | null {
+  const anchor = billingAnchorDay(student);
+  return (anchor ? dueDateFor(fee.month, anchor) : null) || feeDueDate(fee);
+}
+
 // A fee's status is a pure function of what's still owed and when it was due, so we
 // DERIVE it on read instead of relying on a scheduled job to flip rows overnight (there
 // is no cron here). Write paths store the same value so the column is correct at write
@@ -71,9 +83,21 @@ export function feeStatus(fee: FeeLike, today = today0()): FeeStatus {
   return "pending";
 }
 
+// A fee's status, graded against its anchored due date rather than whatever the column says.
+export function feeStatusFor(fee: FeeLike, student: StudentLike | null | undefined, today = today0()): FeeStatus {
+  return feeStatus({ ...fee, due_date: anchoredDueDate(fee, student) }, today);
+}
+
 // Return the row as the API should present it: stored fields, derived status + due date.
-export function withFeeStatus<T extends FeeLike>(fee: T, today = today0()): T & { status: FeeStatus; due_date: string | null } {
-  return { ...fee, due_date: feeDueDate(fee), status: feeStatus(fee, today) };
+// Pass the student and both come out anchored on their admission day; without one it degrades
+// to the stored/end-of-month date, which is the best we can do for a student with no dates.
+export function withFeeStatus<T extends FeeLike>(
+  fee: T,
+  student?: StudentLike | null,
+  today = today0(),
+): T & { status: FeeStatus; due_date: string | null } {
+  const due_date = anchoredDueDate(fee, student);
+  return { ...fee, due_date, status: feeStatus({ ...fee, due_date }, today) };
 }
 
 // When a student owes nothing, the useful answer is not "nothing owed" but *when they

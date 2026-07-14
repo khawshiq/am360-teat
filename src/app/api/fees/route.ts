@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { auth, adminAuth, json, fail, nowIso, trainerBranchIds } from "@/lib/api";
-import { billingAnchorDay, dueDateFor, feeStatus, withFeeStatus } from "@/lib/fees";
+import { billingAnchorDay, dueDateFor, feeStatusFor, withFeeStatus } from "@/lib/fees";
 import { audit } from "@/lib/audit";
 
 export async function GET(req: Request) {
@@ -14,10 +14,20 @@ export async function GET(req: Request) {
   };
   if (u.role === "trainer") await scope({ branch_id: { in: trainerBranchIds(u) } });
   else if (branch_id) await scope({ branch_id });
-  const fees = await prisma.fee.findMany({ where, include: { payments: true } });
-  // Status is derived, not trusted from the column — a fee goes overdue by the clock,
-  // and nothing writes to the row when that happens. See src/lib/fees.ts.
-  return json(fees.map(f => withFeeStatus(f)));
+  const fees = await prisma.fee.findMany({
+    where,
+    include: { payments: { orderBy: { paid_date: "desc" } } },
+  });
+  // Both the due date and the status are DERIVED, never trusted from the columns. The due
+  // date is the student's admission-day anniversary (rows predating that rule still hold an
+  // end-of-month date), and a fee goes overdue by the clock, with nothing writing to the row
+  // when that happens. So we need the students to present the fees. See src/lib/fees.ts.
+  const students = await prisma.student.findMany({
+    where: { academy_id: u.academy_id, id: { in: [...new Set(fees.map(f => f.student_id))] } },
+    select: { id: true, admission_date: true, join_date: true },
+  });
+  const byId = new Map(students.map(s => [s.id, s]));
+  return json(fees.map(f => withFeeStatus(f, byId.get(f.student_id))));
 }
 export async function POST(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
@@ -31,8 +41,8 @@ export async function POST(req: Request) {
   const fee = await prisma.fee.create({ data: {
     academy_id: a.user.academy_id, student_id: b.student_id, type: b.type || "monthly", amount: b.amount,
     paid_amount: 0, month: b.month, due_date, note: b.note || "", created_at: nowIso(),
-    status: feeStatus({ amount: b.amount, paid_amount: 0, due_date, month: b.month }),
+    status: feeStatusFor({ amount: b.amount, paid_amount: 0, due_date, month: b.month }, student),
   } });
   await audit(a.user, "fee.create", "fee", fee.id, { amount: fee.amount, type: fee.type });
-  return json(withFeeStatus(fee));
+  return json(withFeeStatus(fee, student));
 }
