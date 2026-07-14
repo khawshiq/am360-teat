@@ -4,11 +4,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth";
 import UpgradeModal from "@/components/UpgradeModal";
+import NavTabs, { type Tab } from "@/components/NavTabs";
 
-const TABS = [
-  ["Dashboard", "/admin"], ["Branches", "/admin/branches"],
-  ["Trainers", "/admin/trainers"], ["Courses", "/admin/courses"],
-  ["Audit", "/admin/audit"], ["Settings", "/admin/settings"],
+const TABS: Tab[] = [
+  { label: "Dashboard", href: "/admin", icon: "dashboard" },
+  { label: "Branches", href: "/admin/branches", icon: "branches" },
+  { label: "Trainers", href: "/admin/trainers", icon: "trainers" },
+  { label: "Courses", href: "/admin/courses", icon: "courses" },
+  { label: "Audit", href: "/admin/audit", icon: "audit" },
+  { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -32,14 +36,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="topbar-user">
           <div className="avatar" title={user.name}>{initials}</div>
           <span className="muted" style={{ fontSize: 13.5 }}>{user.name}</span>
-          <button className="secondary" onClick={logout} style={{ padding: "7px 14px" }}>Logout</button>
+          <button className="secondary" onClick={logout} style={{ padding: "7px 14px", minHeight: 0 }}>Logout</button>
         </div>
       </div>
-      <nav className="nav">
-        {TABS.map(([label, href]) => (
-          <Link key={href} href={href} className={isActive(href) ? "active" : ""}>{label}</Link>
-        ))}
-      </nav>
+      <NavTabs tabs={TABS} isActive={isActive} />
       {children}
       <UpgradeModal />
     </div>

@@ -3,10 +3,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sa, saToken } from "@/lib/saclient";
+import NavTabs, { type Tab } from "@/components/NavTabs";
 
-const TABS = [
-  ["Dashboard", "/superadmin"], ["Academies", "/superadmin/academies"],
-  ["Plans", "/superadmin/plans"], ["Announcements", "/superadmin/announcements"],
+const TABS: Tab[] = [
+  { label: "Dashboard", href: "/superadmin", icon: "dashboard" },
+  { label: "Academies", href: "/superadmin/academies", icon: "academies" },
+  { label: "Plans", href: "/superadmin/plans", icon: "plans" },
+  { label: "Announcements", href: "/superadmin/announcements", icon: "announcements" },
 ];
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -29,15 +32,20 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="container">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <Link href="/superadmin"><div className="brand">AM <span>360</span> <span className="badge">Platform</span></div></Link>
-        <div className="row"><span className="muted">{me.name}</span><button className="secondary" onClick={logout}>Logout</button></div>
+      <div className="topbar">
+        <Link href="/superadmin">
+          <div className="logo">
+            <span className="mark">A</span>
+            <span>AM<span className="grad"> 360</span></span>
+            <span className="badge on-blue">Platform</span>
+          </div>
+        </Link>
+        <div className="topbar-user">
+          <span className="muted" style={{ fontSize: 13.5 }}>{me.name}</span>
+          <button className="secondary" onClick={logout} style={{ padding: "7px 14px", minHeight: 0 }}>Logout</button>
+        </div>
       </div>
-      <nav className="nav">
-        {TABS.map(([label, href]) => (
-          <Link key={href} href={href} className={isActive(href) ? "active" : ""}>{label}</Link>
-        ))}
-      </nav>
+      <NavTabs tabs={TABS} isActive={isActive} />
       {children}
     </div>
   );

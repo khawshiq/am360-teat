@@ -53,7 +53,7 @@ export default function SubscriptionModal({
         name: "AM360",
         description: `${order.plan.name} · ${order.months} month${order.months > 1 ? "s" : ""}`,
         order_id: order.order_id,
-        theme: { color: "#6d5eea" },
+        theme: { color: "#1461ce" },   // keep in step with --accent in globals.css
         handler: async (resp: any) => {
           try {
             const r = await api.verifySubscription({
