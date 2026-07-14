@@ -68,6 +68,24 @@ export class PlanLimitError extends Error {
   }
 }
 
+// Thrown when the academy's plan does not include a boolean feature (as opposed to
+// being at a numeric cap). Routes turn it into the same 402 as PlanLimitError, so it
+// drives the same upgrade popup — one paywall pipeline, not two.
+export class PlanFeatureError extends Error {
+  feature: string;
+  constructor(feature: string, label: string) {
+    super(`${label} is not included in your plan. Upgrade to unlock it.`);
+    this.feature = feature;
+  }
+}
+
+// Gate on one of Plan.features (reports | export | messaging | backup). These flags
+// have existed since the plan ladder was written and, until exports, nothing read them.
+export async function assertFeature(academy_id: string, feature: string, label: string) {
+  const plan = await getPlanForAcademy(academy_id);
+  if (!plan.features?.[feature]) throw new PlanFeatureError(feature, label);
+}
+
 // Ensure a Plan row exists for every known tier (idempotent). Safe to call from
 // any authenticated request; used to bootstrap pricing with zero manual seeding.
 export async function ensurePlansSeeded() {
