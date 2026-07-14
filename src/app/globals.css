@@ -101,10 +101,36 @@
   --c-cyan: #0891b2;
   --c-magenta: #be185d;
 
-  /* No brand gradients any more. The header is white (see .topbar) and the lockup is
-     real artwork, so neither --grad-header nor --grad-brand had a consumer left. The
-     indigo lives on buttons, the active tab, the focus ring and the tiles — where it
-     carries meaning rather than just filling a band across the top. */
+  /* ---- Tone gradients: the FILL of a solid tile -------------------------------
+     Each is its hue → the same hue at ~88% brightness. Deliberately shallow, and
+     that is the whole trick.
+
+     A gradient spreads a hue across a RANGE, so the pair that must stay separable
+     is not the two tokens but the two *midpoints*. Deep gradients (the kind the
+     reference mockup uses) darken the mid, and deuteranopic separation shrinks as
+     colours darken: blue↔violet went 13.3 → 7.9 the moment the gradients got
+     dramatic. Kept shallow, the mid stays on the base hue and the pair holds at
+     ΔE 11.8 — the 8–12 band, which is legal ONLY because every tile also carries a
+     distinct icon and a direct text label. Do not deepen these without re-running
+     the validator on the midpoints.
+
+     --c-cyan cannot be a solid-tile fill at all: white text on it is 3.68:1. The
+     teal below is the darker step that can (5.36), at the cost of chroma 0.088 vs
+     the validator's 0.1 floor — accepted here because it is a 160px filled tile,
+     not a hairline mark. Every alternative either failed white text or collapsed
+     to ΔE 6.0 from magenta.
+
+     ⚠️ White text sits on these. The LIGHT end is the binding constraint, and every
+     one of them clears 4.5:1 on it (worst 5.02). The mockup these came from is at
+     1.97:1 on its orange tile — a label you cannot read. */
+  --g-blue:    linear-gradient(135deg, #1461ce, #1152af);
+  --g-violet:  linear-gradient(135deg, #6d28d9, #5d22b8);
+  --g-cyan:    linear-gradient(135deg, #0e7490, #0c637a);
+  --g-magenta: linear-gradient(135deg, #be185d, #a2144f);
+  --g-good:    linear-gradient(135deg, #15803d, #126d34);
+  --g-warn:    linear-gradient(135deg, #b45309, #9a4708);
+  --g-crit:    linear-gradient(135deg, #be123c, #a20f33);
+  --g-slate:   linear-gradient(135deg, #475569, #3c4859);   /* nothing marked yet */
 
   /* ---- Elevation: light, diffuse, violet-tinted (never plain black) ---- */
   --shadow-sm: 0 1px 2px rgba(31, 24, 80, 0.06);
@@ -311,12 +337,11 @@ button:disabled:hover { background: var(--accent); }
 .empty { text-align: center; color: var(--muted); padding: var(--s6) var(--s3); font-size: 13.5px; }
 
 /* ---- Stat tiles -------------------------------------------------------------
-   A tile carries its colour on a left edge and an icon chip — NOT on its value.
-   The value stays in ink because a coloured number competes with every other
-   coloured number on the board, and the colour is doing identity work, not
-   magnitude work. The one exception is Overdue, which colours its value red: that
-   is an alarm, and it still ships with an icon and the word "Overdue", so it is
-   never colour-alone.
+   The BASE tile below is the plain one: white, with the tone on a left edge and an
+   icon chip. Two variants build on it — `.solid` (gradient fill, white text) and
+   `.wave` (white card, tone in the chip/value/sparkline) — and the dashboard uses
+   only those two. The base is what a tile looks like with neither, which is why
+   /superadmin still renders without knowing about any of this.
 
    Tone is set by a `t-*` class. A tile with no tone gets a grey edge, so the
    Super Admin dashboard keeps working untouched. */
@@ -341,7 +366,6 @@ button:disabled:hover { background: var(--accent); }
 .stat:hover { transform: translateY(-2px); border-color: var(--border); box-shadow: var(--shadow); }
 .stat .n { font-size: 27px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); }
 .stat .l { color: var(--muted); font-size: 12.5px; margin-top: var(--s1); font-weight: 500; }
-.stat .n.alarm { color: var(--danger); }
 
 /* The kit's signature: a chunky rounded-square icon chip, tinted with its own colour. */
 .stat-ico {
@@ -398,13 +422,83 @@ button.stat-btn:focus-visible { box-shadow: var(--ring); border-color: var(--ton
 .stat-go svg { width: 100%; height: 100%; display: block; }
 button.stat-btn:hover .stat-go { color: var(--tone); transform: translateX(2px); }
 
-.stat.t-blue    { --tone: var(--c-blue); }
-.stat.t-violet  { --tone: var(--c-violet); }
-.stat.t-cyan    { --tone: var(--c-cyan); }
-.stat.t-magenta { --tone: var(--c-magenta); }
-.stat.t-good    { --tone: var(--ok); }
-.stat.t-warn    { --tone: var(--warn); }
-.stat.t-crit    { --tone: var(--danger); }
+.stat.t-blue    { --tone: var(--c-blue);    --grad: var(--g-blue); }
+.stat.t-violet  { --tone: var(--c-violet);  --grad: var(--g-violet); }
+.stat.t-cyan    { --tone: var(--c-cyan);    --grad: var(--g-cyan); }
+.stat.t-magenta { --tone: var(--c-magenta); --grad: var(--g-magenta); }
+.stat.t-good    { --tone: var(--ok);        --grad: var(--g-good); }
+.stat.t-warn    { --tone: var(--warn);      --grad: var(--g-warn); }
+.stat.t-crit    { --tone: var(--danger);    --grad: var(--g-crit); }
+.stat.t-slate   { --tone: #475569;          --grad: var(--g-slate); }
+
+/* ---- Variant: SOLID -- the gradient-filled tile ------------------------------
+   The Academy row. The whole card is the colour, the text is white, and the icon
+   chip is white-on-white-at-18% rather than a tint of the hue (a tinted chip is
+   invisible on its own colour).
+
+   The tone here is IDENTITY (which thing), except on Attendance, where it is
+   severity — a rate is a state, so that tile alone changes colour with its value.
+   Both still ship an icon and a label, which is what makes the blue↔violet pair
+   legal at ΔE 11.8. */
+.stat.solid {
+  background: var(--grad, var(--g-slate));
+  border-color: transparent;
+  color: #fff;
+  padding-left: var(--s5);            /* no left edge — the whole tile is the edge */
+  box-shadow: 0 6px 16px -8px rgba(31, 24, 80, 0.35);
+}
+.stat.solid::before { display: none; }
+.stat.solid .n { color: #fff; }
+.stat.solid .l { color: rgba(255, 255, 255, 0.88); }
+.stat.solid .stat-ico { color: #fff; border-radius: 12px; width: 36px; height: 36px; }
+.stat.solid .stat-ico::before { opacity: 0.20; }
+.stat.solid .stat-sub { color: rgba(255, 255, 255, 0.82); }
+button.stat-btn.solid { background: var(--grad, var(--g-slate)); color: #fff; }
+button.stat-btn.solid:hover {
+  background: var(--grad, var(--g-slate));
+  border-color: transparent;
+  box-shadow: 0 14px 26px -10px rgba(31, 24, 80, 0.45);
+}
+/* On a coloured tile the chevron becomes a small translucent disc, the way the
+   reference does it — a faint grey chevron would vanish into the fill. */
+.stat.solid .stat-go {
+  color: #fff;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20);
+  padding: 5px;
+  top: var(--s4); right: var(--s4);
+}
+button.stat-btn.solid:hover .stat-go { color: #fff; background: rgba(255, 255, 255, 0.34); }
+.stat.solid .meter { background: rgba(255, 255, 255, 0.25); }
+.stat.solid .meter-fill { background: #fff; }
+
+/* The small line under the label: "5 this month", "0 scheduled". Context for the
+   number, not another number — so it stays quiet. */
+.stat-sub { font-size: 11.5px; font-weight: 500; margin-top: var(--s3); color: var(--muted); }
+
+/* ---- Variant: WAVE -- white card, colour in the chip, the value and a sparkline --
+   The Fees row. Money tiles stay WHITE on purpose: five saturated cards in a row
+   and nothing is emphasised. Here the tone is status (good/warn/crit), so the
+   value itself wears it — all three clear 4.5:1 on white. */
+.stat.wave { padding-left: var(--s5); padding-bottom: 46px; }   /* room for the wave */
+.stat.wave::before { display: none; }
+.stat.wave .n { color: var(--tone); }
+.stat.wave .stat-ico {
+  color: #fff;
+  background: var(--grad, var(--g-slate));
+  width: 40px; height: 40px;
+  box-shadow: 0 4px 10px -4px var(--tone);
+}
+.stat.wave .stat-ico::before { display: none; }   /* the chip is solid, not a tint */
+.stat-wave {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 52px;
+  color: var(--tone);                 /* the SVG paints itself from currentColor */
+  pointer-events: none;
+}
+.stat-wave svg { width: 100%; height: 100%; display: block; }
 
 /* Meter — for a rate, where the number alone ("62%") doesn't show you where it
    sits between nothing and everything. The track is the tone at 12%; the fill is
@@ -427,10 +521,25 @@ button.stat-btn:hover .stat-go { color: var(--tone); transform: translateX(2px);
 /* ---- 7-day attendance chart -------------------------------------------------
    One series, so no legend — the title says what is plotted. The y-scale is a
    percentage and therefore fixed 0–100: letting it auto-scale to the tallest bar
-   would make a 4%-attendance day look full-height. A dashed 100% ceiling and the
-   cap labels carry the values, so there is no y-axis. */
+   would make a 4%-attendance day look full-height. It now has a real gridded
+   y-axis (0/25/50/75/100), which is what lets you read a bar you are not hovering. */
+.chart-wrap { display: flex; gap: var(--s2); }
+.chart-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 150px;
+  padding-top: 18px;              /* line up with the plot area, not the cap labels */
+  padding-bottom: 23px;           /* ...and with the baseline, above the x labels */
+  font-size: 10.5px;
+  color: var(--faint);
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
 .chart {
   position: relative;
+  flex: 1;
   display: flex;
   align-items: flex-end;
   gap: var(--s2);
@@ -438,14 +547,24 @@ button.stat-btn:hover .stat-go { color: var(--tone); transform: translateX(2px);
   padding-top: 18px;              /* room for the cap labels */
   border-bottom: 1px solid var(--border);
 }
+/* The gridlines. Recessive by design — they are a ruler, not data. */
+.chart-grid {
+  position: absolute;
+  left: 0; right: 0; top: 18px; bottom: 23px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.chart-grid i { display: block; border-top: 1px dashed var(--border-soft); }
 .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
 .chart-track { width: 100%; display: flex; align-items: flex-end; justify-content: center; flex: 1; position: relative; }
 .chart-bar {
   width: 100%;
-  max-width: 24px;                /* cap it — never fill the slot; the air is the point */
+  max-width: 22px;                /* cap it — never fill the slot; the air is the point */
   min-height: 2px;
-  border-radius: 4px 4px 0 0;     /* rounded cap, square at the baseline */
-  background: var(--accent);
+  border-radius: 5px 5px 0 0;     /* rounded cap, square at the baseline */
+  background: linear-gradient(180deg, var(--accent), var(--accent-press));
   transition: filter 0.15s ease;
 }
 .chart-col:hover .chart-bar { filter: brightness(1.1); }
@@ -461,19 +580,50 @@ button.stat-btn:hover .stat-go { color: var(--tone); transform: translateX(2px);
   white-space: nowrap;
 }
 .chart-x { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
-.chart-ceiling {
-  position: absolute;
-  left: 0; right: 0; top: 18px;
-  border-top: 1px dashed var(--border);
-  pointer-events: none;
-}
-.chart-ceiling span {
-  position: absolute; right: 0; top: -8px;
+
+/* ---- Welcome header ---------------------------------------------------------
+   Names the person and dates the data. The date is not decoration: every number
+   under it is "today", and a dashboard with no date on it is a screenshot waiting
+   to be misread. */
+.welcome { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
+.welcome h1 { font-size: 24px; font-weight: 700; }
+.welcome h1 em { font-style: normal; color: var(--accent-ink); }
+.welcome p { color: var(--muted); font-size: 13.5px; margin: var(--s2) 0 0; }
+.date-pill {
+  display: inline-flex; align-items: center; gap: 8px;
   background: var(--surface);
-  padding-left: 6px;
-  font-size: 10.5px;
-  color: var(--faint);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 9px 14px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
 }
+.date-pill svg { width: 15px; height: 15px; color: var(--accent-ink); }
+
+/* ---- Row icon chip ----------------------------------------------------------
+   The little coloured square on a list row (branches). Its hue is derived from the
+   row's position, so a given branch keeps the same colour every time the list is
+   drawn. It is decoration with a memory — never a status. */
+.row-ico {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  color: #fff;
+  background: var(--grad, var(--g-slate));
+}
+.row-ico svg { width: 17px; height: 17px; display: block; }
+.row-ico.t-blue    { --grad: var(--g-blue); }
+.row-ico.t-violet  { --grad: var(--g-violet); }
+.row-ico.t-cyan    { --grad: var(--g-cyan); }
+.row-ico.t-magenta { --grad: var(--g-magenta); }
+
+.row-stat { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.row-stat b { color: var(--text); font-weight: 700; }
+.row-go { width: 16px; height: 16px; color: var(--faint); flex-shrink: 0; }
+.row-go svg { width: 100%; height: 100%; display: block; }
 
 /* ---- Icon button (e.g. modal close) ---- */
 .icon-btn {
