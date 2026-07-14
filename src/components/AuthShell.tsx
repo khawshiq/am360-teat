@@ -6,7 +6,9 @@ import Logo from "./Logo";
 export default function AuthShell({
   title, subtitle, children, footer,
 }: {
-  title: string;
+  /** ReactNode, not string, so a screen can highlight one word: `Welcome <em>back!</em>`.
+   *  <em> is styled as the brand colour — emphasis that still means emphasis with CSS off. */
+  title: React.ReactNode;
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
