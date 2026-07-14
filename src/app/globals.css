@@ -37,13 +37,33 @@
   --accent2: #0f9aab;                       /* teal — links, active nav */
   --accent3: #d93583;                       /* pink — rare, one-per-screen */
 
-  /* ---- Status (AA on white) ---- */
-  --ok: #12885a;
-  --ok-soft: rgba(18, 136, 90, 0.10);
-  --warn: #a76400;
-  --warn-soft: rgba(167, 100, 0, 0.10);
-  --danger: #cf3040;
-  --danger-soft: rgba(207, 48, 64, 0.08);
+  /* ---- Status: RESERVED. Never reuse one of these as an identity hue. ---------
+     A status colour means a state (good / warning / critical). The moment it also
+     means "Trainers", a red tile stops meaning "something is wrong". These three
+     are used by badges, fee text, the dashboard money tiles and the attendance
+     meter — one palette, one meaning.
+     All three clear 4.5:1 on white, so they are safe as small text (badges). */
+  --ok: #15803d;
+  --ok-soft: rgba(21, 128, 61, 0.10);
+  --warn: #a16207;
+  --warn-soft: rgba(161, 98, 7, 0.10);
+  --danger: #be123c;
+  --danger-soft: rgba(190, 18, 60, 0.08);
+
+  /* ---- Identity hues: which THING this is, not how it is doing ---------------
+     For the dashboard tiles. Validated as a set against white with the dataviz
+     validator: all inside the lightness band, all above the chroma floor, all
+     ≥3:1 on white, worst adjacent colourblind separation ΔE 13.3 (target ≥12) —
+     including against the status colours above, so a colourblind reader never
+     confuses "Trainers" with "Overdue".
+
+     Two rules if you add one: run the validator (do not eyeball it), and keep it
+     clear of the status hues. Note --c-cyan is 3.68:1 — fine as a chip or a bar,
+     NOT as small text. */
+  --c-blue: #1461ce;
+  --c-violet: #6d28d9;
+  --c-cyan: #0891b2;
+  --c-magenta: #be185d;
 
   /* Gradients: the header hero, and the brand lockup */
   --grad-header: linear-gradient(135deg, #0e58c4 0%, #2e86e0 100%);
@@ -266,32 +286,134 @@ button:disabled:hover { background: var(--accent); }
 .section-title { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; }
 .empty { text-align: center; color: var(--muted); padding: var(--s6) var(--s3); font-size: 13.5px; }
 
-/* ---- Stats ---- */
+/* ---- Stat tiles -------------------------------------------------------------
+   A tile carries its colour on a left edge and an icon chip — NOT on its value.
+   The value stays in ink because a coloured number competes with every other
+   coloured number on the board, and the colour is doing identity work, not
+   magnitude work. The one exception is Overdue, which colours its value red: that
+   is an alarm, and it still ships with an icon and the word "Overdue", so it is
+   never colour-alone.
+
+   Tone is set by a `t-*` class. A tile with no tone gets a grey edge, so the
+   Super Admin dashboard keeps working untouched. */
 .stat {
+  --tone: var(--border-strong);
   position: relative;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-lg);
-  padding: var(--s5);
+  padding: var(--s5) var(--s5) var(--s5) calc(var(--s5) + 4px);
   box-shadow: var(--shadow-sm);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 }
+.stat::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--tone);
+}
 .stat:hover { transform: translateY(-2px); border-color: var(--border); box-shadow: var(--shadow); }
-.stat .n { font-size: 27px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text); }
+.stat .n { font-size: 27px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); }
 .stat .l { color: var(--muted); font-size: 12.5px; margin-top: var(--s1); font-weight: 500; }
+.stat .n.alarm { color: var(--danger); }
 
-/* ---- Mini bar chart (single series — one brand colour, no palette needed) ---- */
-.chart { display: flex; align-items: flex-end; gap: var(--s2); height: 128px; }
-.chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; height: 100%; justify-content: flex-end; }
-.chart-track { width: 100%; display: flex; align-items: flex-end; justify-content: center; flex: 1; }
+.stat-ico {
+  position: relative;
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  color: var(--tone);
+  margin-bottom: var(--s3);
+}
+/* The chip's tint is its own colour at 12% — one declaration, no colour-mix(),
+   which the Android WebView we ship in does not reliably have. */
+.stat-ico::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0.12;
+}
+.stat-ico svg { position: relative; width: 18px; height: 18px; display: block; }
+
+.stat.t-blue    { --tone: var(--c-blue); }
+.stat.t-violet  { --tone: var(--c-violet); }
+.stat.t-cyan    { --tone: var(--c-cyan); }
+.stat.t-magenta { --tone: var(--c-magenta); }
+.stat.t-good    { --tone: var(--ok); }
+.stat.t-warn    { --tone: var(--warn); }
+.stat.t-crit    { --tone: var(--danger); }
+
+/* Meter — for a rate, where the number alone ("62%") doesn't show you where it
+   sits between nothing and everything. The track is the tone at 12%; the fill is
+   the tone. */
+.meter {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  margin-top: var(--s3);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tone);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---- 7-day attendance chart -------------------------------------------------
+   One series, so no legend — the title says what is plotted. The y-scale is a
+   percentage and therefore fixed 0–100: letting it auto-scale to the tallest bar
+   would make a 4%-attendance day look full-height. A dashed 100% ceiling and the
+   cap labels carry the values, so there is no y-axis. */
+.chart {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s2);
+  height: 150px;
+  padding-top: 18px;              /* room for the cap labels */
+  border-bottom: 1px solid var(--border);
+}
+.chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.chart-track { width: 100%; display: flex; align-items: flex-end; justify-content: center; flex: 1; position: relative; }
 .chart-bar {
-  width: 100%; max-width: 30px; min-height: 3px;
-  border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, var(--accent) 0%, #7fb0f0 100%);
+  width: 100%;
+  max-width: 24px;                /* cap it — never fill the slot; the air is the point */
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;     /* rounded cap, square at the baseline */
+  background: var(--accent);
   transition: filter 0.15s ease;
 }
-.chart-col:hover .chart-bar { filter: brightness(1.08); }
+.chart-col:hover .chart-bar { filter: brightness(1.1); }
+/* The value rides the cap. Zero days get no label — a column of "0%" is noise,
+   and an empty slot already says "nothing happened". */
+.chart-v {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);            /* text wears ink, never the series colour */
+  white-space: nowrap;
+}
 .chart-x { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.chart-ceiling {
+  position: absolute;
+  left: 0; right: 0; top: 18px;
+  border-top: 1px dashed var(--border);
+  pointer-events: none;
+}
+.chart-ceiling span {
+  position: absolute; right: 0; top: -8px;
+  background: var(--surface);
+  padding-left: 6px;
+  font-size: 10.5px;
+  color: var(--faint);
+}
 
 /* ---- Icon button (e.g. modal close) ---- */
 .icon-btn {
