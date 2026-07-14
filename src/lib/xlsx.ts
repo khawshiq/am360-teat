@@ -114,15 +114,15 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;₹&quot;#,##0"/></numFmts>
 <fonts count="5">
 <font><sz val="11"/><name val="Calibri"/></font>
-<font><b/><sz val="16"/><color rgb="FF10233F"/><name val="Calibri"/></font>
-<font><b/><sz val="12"/><color rgb="FF10233F"/><name val="Calibri"/></font>
-<font><sz val="10"/><color rgb="FF5D7086"/><name val="Calibri"/></font>
+<font><b/><sz val="16"/><color rgb="FF1C1B3A"/><name val="Calibri"/></font>
+<font><b/><sz val="12"/><color rgb="FF1C1B3A"/><name val="Calibri"/></font>
+<font><sz val="10"/><color rgb="FF6B6B8F"/><name val="Calibri"/></font>
 <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
 </fonts>
 <fills count="3">
 <fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="gray125"/></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FF1461CE"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF6C5CE7"/><bgColor indexed="64"/></patternFill></fill>
 </fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>

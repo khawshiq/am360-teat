@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Matches the top of the header gradient, so the Android status bar and the
   // iOS PWA chrome blend into the app's own header instead of banding against it.
-  themeColor: "#0e58c4",
+  themeColor: "#5546d6",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

@@ -14,26 +14,35 @@
    ============================================================================ */
 
 :root {
-  /* ---- Surfaces ---- */
-  --bg: #f2f5f9;          /* the page behind the sheets */
+  /* ---- Surfaces (lavender-tinted, per the reference kit) ---- */
+  --bg: #f4f5fd;          /* the page behind the sheets — a hint of the brand, not grey */
   --surface: #ffffff;     /* cards, list rows, modals */
-  --surface-2: #f7f9fc;   /* inputs, secondary buttons */
-  --surface-3: #eaeff6;   /* hover fills, chips */
-  --border: #dee5ee;
-  --border-soft: #e9eef4;
-  --border-strong: #c6d1df;
+  --surface-2: #f7f8fe;   /* inputs, secondary buttons */
+  --surface-3: #eceefb;   /* hover fills, chips */
+  --border: #e2e4f4;
+  --border-soft: #edeff8;
+  --border-strong: #c9cde8;
 
   /* ---- Text ---- */
-  --text: #10233f;
-  --muted: #5d7086;
-  --faint: #93a2b4;
+  --text: #1c1b3a;        /* near-black with a violet cast, so it sits in the family */
+  --muted: #6b6b8f;
+  --faint: #9c9cbb;
 
-  /* ---- Brand ---- */
-  --accent: #1461ce;                        /* the one actionable blue */
-  --accent-hover: #1a72e8;
-  --accent-press: #0f51ae;
-  --accent-soft: rgba(20, 97, 206, 0.08);
-  --accent-line: rgba(20, 97, 206, 0.28);
+  /* ---- Brand: indigo/violet ------------------------------------------------
+     #6c5ce7 is chosen, not picked. It is the lightest indigo that still clears
+     4.5:1 against white (4.86) — so a white button label stays readable — while
+     staying ΔE 13.2 from the violet IDENTITY tile below. The darker indigos the
+     kit also suggests (#5b4ce0, #4f46e5) look better on a button but collapse to
+     ΔE 4.4–4.9 from that tile: to a colourblind user the "Trainers" chip and every
+     button in the app become the same colour.
+
+     Hover/press go DARKER, not lighter. Lightening this hue drops white text below
+     4.5:1 — on a light theme, "hover = brighter" is a dark-theme reflex that fails. */
+  --accent: #6c5ce7;
+  --accent-hover: #5b4ce0;                  /* 5.91:1 */
+  --accent-press: #4f46e5;                  /* 6.29:1 */
+  --accent-soft: rgba(108, 92, 231, 0.10);
+  --accent-line: rgba(108, 92, 231, 0.30);
   --accent2: #0f9aab;                       /* teal — links, active nav */
   --accent3: #d93583;                       /* pink — rare, one-per-screen */
 
@@ -65,21 +74,25 @@
   --c-cyan: #0891b2;
   --c-magenta: #be185d;
 
-  /* Gradients: the header hero, and the brand lockup */
-  --grad-header: linear-gradient(135deg, #0e58c4 0%, #2e86e0 100%);
-  --grad-brand: linear-gradient(120deg, #1461ce 0%, #0f9aab 100%);
+  /* Gradients: the header hero, and the brand lockup.
+     BOTH ends of the header gradient must clear 4.5:1 against white, because white
+     text sits on it end to end. #7a6cef (4.02) and anything lighter does not — which
+     is why this stops at #6c5ce7 rather than fading out to the pale lilac the kit
+     uses behind its illustrations. */
+  --grad-header: linear-gradient(135deg, #5546d6 0%, #6c5ce7 100%);
+  --grad-brand: linear-gradient(120deg, #6c5ce7 0%, #0f9aab 100%);
 
-  /* ---- Elevation: light, diffuse, blue-tinted (never plain black) ---- */
-  --shadow-sm: 0 1px 2px rgba(16, 32, 64, 0.06);
-  --shadow: 0 6px 18px -8px rgba(16, 32, 64, 0.18);
-  --shadow-lg: 0 28px 60px -24px rgba(16, 32, 64, 0.32);
-  --ring: 0 0 0 3px rgba(20, 97, 206, 0.20);
+  /* ---- Elevation: light, diffuse, violet-tinted (never plain black) ---- */
+  --shadow-sm: 0 1px 2px rgba(31, 24, 80, 0.06);
+  --shadow: 0 6px 18px -8px rgba(31, 24, 80, 0.18);
+  --shadow-lg: 0 28px 60px -24px rgba(31, 24, 80, 0.30);
+  --ring: 0 0 0 3px rgba(108, 92, 231, 0.22);
 
-  /* ---- Radius ---- */
-  --r-sm: 8px;
-  --r: 10px;
-  --r-lg: 14px;
-  --r-xl: 20px;
+  /* ---- Radius: softer, per the kit ---- */
+  --r-sm: 10px;
+  --r: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
 
   /* ---- Spacing scale (4px base) ---- */
   --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
@@ -319,10 +332,11 @@ button:disabled:hover { background: var(--accent); }
 .stat .l { color: var(--muted); font-size: 12.5px; margin-top: var(--s1); font-weight: 500; }
 .stat .n.alarm { color: var(--danger); }
 
+/* The kit's signature: a chunky rounded-square icon chip, tinted with its own colour. */
 .stat-ico {
   position: relative;
-  width: 32px; height: 32px;
-  border-radius: 9px;
+  width: 38px; height: 38px;
+  border-radius: 13px;
   display: grid; place-items: center;
   color: var(--tone);
   margin-bottom: var(--s3);
@@ -336,7 +350,7 @@ button:disabled:hover { background: var(--accent); }
   background: currentColor;
   opacity: 0.12;
 }
-.stat-ico svg { position: relative; width: 18px; height: 18px; display: block; }
+.stat-ico svg { position: relative; width: 20px; height: 20px; display: block; }
 
 /* A clickable tile is a real <button>, so it inherits the primary-button styling —
    solid blue, white text, centred. Undo all of it: a tile is a surface you can press,

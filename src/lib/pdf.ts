@@ -88,6 +88,16 @@ export type Doc = {
 
 const A4 = { w: 595.28, h: 841.89 };
 
+// PDF wants 0–1 RGB, so the design tokens are restated here rather than referenced.
+// Keep them in step with globals.css — the export is the academy's letterhead, and a
+// blue header band on a violet-branded app looks like someone else's document.
+const INK = "0.11 0.106 0.227";      // --text   #1c1b3a
+const MUTED = "0.42 0.42 0.561";     // --muted  #6b6b8f
+const FAINT = "0.612 0.612 0.733";   // --faint  #9c9cbb
+const ACCENT = "0.424 0.361 0.906";  // --accent #6c5ce7
+const ZEBRA = "0.969 0.973 0.996";   // --surface-2 #f7f8fe
+const LINE = "0.886 0.894 0.957";    // --border #e2e4f4
+
 export function buildPdf(doc: Doc): Buffer {
   const PW = doc.landscape ? A4.h : A4.w;
   const PH = doc.landscape ? A4.w : A4.h;
@@ -121,21 +131,21 @@ export function buildPdf(doc: Doc): Buffer {
     if (first) {
       // Letterhead. The academy owns this document — its name leads, at 17pt, above
       // a brand rule. Then what the report is, then when it was run.
-      ops.push(`BT /F2 17 Tf 0.06 0.14 0.25 rg 1 0 0 1 ${M} ${y - 14} Tm (${pdfStr(doc.academy)}) Tj ET`);
+      ops.push(`BT /F2 17 Tf ${INK} rg 1 0 0 1 ${M} ${y - 14} Tm (${pdfStr(doc.academy)}) Tj ET`);
       y -= 20;
-      ops.push(`0.08 0.38 0.81 RG 2 w ${M} ${y - 4} m ${M + 46} ${y - 4} l S`);
+      ops.push(`${ACCENT} RG 2 w ${M} ${y - 4} m ${M + 46} ${y - 4} l S`);
       y -= 16;
-      ops.push(`BT /F2 12 Tf 0.06 0.14 0.25 rg 1 0 0 1 ${M} ${y - 10} Tm (${pdfStr(doc.title)}) Tj ET`);
+      ops.push(`BT /F2 12 Tf ${INK} rg 1 0 0 1 ${M} ${y - 10} Tm (${pdfStr(doc.title)}) Tj ET`);
       y -= 16;
-      ops.push(`BT /F1 8.5 Tf 0.36 0.44 0.53 rg 1 0 0 1 ${M} ${y - 8} Tm (${pdfStr(doc.subtitle)}) Tj ET`);
+      ops.push(`BT /F1 8.5 Tf ${MUTED} rg 1 0 0 1 ${M} ${y - 8} Tm (${pdfStr(doc.subtitle)}) Tj ET`);
       y -= 20;
     } else {
-      ops.push(`BT /F2 10 Tf 0.36 0.44 0.53 rg 1 0 0 1 ${M} ${y - 10} Tm (${pdfStr(doc.academy + " - " + doc.title)}) Tj ET`);
+      ops.push(`BT /F2 10 Tf ${MUTED} rg 1 0 0 1 ${M} ${y - 10} Tm (${pdfStr(doc.academy + " - " + doc.title)}) Tj ET`);
       y -= 22;
     }
 
     // Header band — repeated on every page, so page 4 of a fee export is still readable.
-    ops.push(`0.08 0.38 0.81 rg ${M} ${y - HEAD_H} ${CW} ${HEAD_H} re f`);
+    ops.push(`${ACCENT} rg ${M} ${y - HEAD_H} ${CW} ${HEAD_H} re f`);
     let x = M;
     doc.columns.forEach((c, i) => {
       const t = fit(c.label, widths[i] - 10, FS, true);
@@ -153,8 +163,8 @@ export function buildPdf(doc: Doc): Buffer {
     if (y - ROW_H < M + 24) { endPage(); startPage(false); }
 
     // Zebra striping: the eye tracks a 9-column row across a page far better with it.
-    if (ri % 2 === 1) ops.push(`0.968 0.976 0.988 rg ${M} ${y - ROW_H} ${CW} ${ROW_H} re f`);
-    ops.push(`0.87 0.90 0.93 RG 0.5 w ${M} ${y - ROW_H} m ${M + CW} ${y - ROW_H} l S`);
+    if (ri % 2 === 1) ops.push(`${ZEBRA} rg ${M} ${y - ROW_H} ${CW} ${ROW_H} re f`);
+    ops.push(`${LINE} RG 0.5 w ${M} ${y - ROW_H} m ${M + CW} ${y - ROW_H} l S`);
 
     let x = M;
     doc.columns.forEach((c, i) => {
@@ -163,14 +173,14 @@ export function buildPdf(doc: Doc): Buffer {
       // Numbers right-align. A column of amounts that doesn't line up on the decimal
       // is unreadable, and this is a document people add up.
       const tx = money ? x + widths[i] - 5 - textWidth(t, FS) : x + 5;
-      ops.push(`BT /F1 ${FS} Tf 0.06 0.14 0.25 rg 1 0 0 1 ${tx.toFixed(2)} ${y - ROW_H + 5.5} Tm (${pdfStr(t)}) Tj ET`);
+      ops.push(`BT /F1 ${FS} Tf ${INK} rg 1 0 0 1 ${tx.toFixed(2)} ${y - ROW_H + 5.5} Tm (${pdfStr(t)}) Tj ET`);
       x += widths[i];
     });
     y -= ROW_H;
   });
 
   if (!doc.rows.length) {
-    ops.push(`BT /F1 9 Tf 0.36 0.44 0.53 rg 1 0 0 1 ${M + 5} ${y - 16} Tm (No records.) Tj ET`);
+    ops.push(`BT /F1 9 Tf ${MUTED} rg 1 0 0 1 ${M + 5} ${y - 16} Tm (No records.) Tj ET`);
   }
   endPage();
 
@@ -181,8 +191,8 @@ export function buildPdf(doc: Doc): Buffer {
     const right = pdfStr(`Page ${i + 1} of ${total_pages}`);
     const rw = textWidth(toWinAnsi(`Page ${i + 1} of ${total_pages}`), 8);
     return content +
-      `\nBT /F1 8 Tf 0.58 0.64 0.71 rg 1 0 0 1 ${M} ${M - 12} Tm (${left}) Tj ET` +
-      `\nBT /F1 8 Tf 0.58 0.64 0.71 rg 1 0 0 1 ${(PW - M - rw).toFixed(2)} ${M - 12} Tm (${right}) Tj ET`;
+      `\nBT /F1 8 Tf ${FAINT} rg 1 0 0 1 ${M} ${M - 12} Tm (${left}) Tj ET` +
+      `\nBT /F1 8 Tf ${FAINT} rg 1 0 0 1 ${(PW - M - rw).toFixed(2)} ${M - 12} Tm (${right}) Tj ET`;
   });
 
   return assemble(withFooters, PW, PH);
