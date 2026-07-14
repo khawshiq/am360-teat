@@ -3,8 +3,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth";
+import NavTabs, { type Tab } from "@/components/NavTabs";
 
-const TABS = [["Workspace", "/trainer"], ["Schedule", "/trainer/schedule"], ["Profile", "/trainer/profile"]];
+const TABS: Tab[] = [
+  { label: "Workspace", href: "/trainer", icon: "workspace" },
+  { label: "Schedule", href: "/trainer/schedule", icon: "schedule" },
+  { label: "Profile", href: "/trainer/profile", icon: "profile" },
+];
 
 export default function TrainerLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -16,15 +21,20 @@ export default function TrainerLayout({ children }: { children: React.ReactNode 
   }, [user, loading, router]);
   if (loading || !user || user.must_change_password) return <div className="center muted">Loading…</div>;
 
+  const initials = (user.name || "?").split(" ").map((s: string) => s[0]).slice(0, 2).join("");
   return (
     <div className="container">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="brand">AM <span>360</span></div>
-        <div className="row"><span className="muted">{user.name}</span><button className="secondary" onClick={logout}>Logout</button></div>
+      <div className="topbar">
+        <Link href="/trainer">
+          <div className="logo"><span className="mark">A</span><span>AM<span className="grad"> 360</span></span></div>
+        </Link>
+        <div className="topbar-user">
+          <div className="avatar" title={user.name}>{initials}</div>
+          <span className="muted" style={{ fontSize: 13.5 }}>{user.name}</span>
+          <button className="secondary" onClick={logout} style={{ padding: "7px 14px", minHeight: 0 }}>Logout</button>
+        </div>
       </div>
-      <nav className="nav">
-        {TABS.map(([l, h]) => <Link key={h} href={h} className={path === h ? "active" : ""}>{l}</Link>)}
-      </nav>
+      <NavTabs tabs={TABS} isActive={h => path === h} />
       {children}
     </div>
   );
