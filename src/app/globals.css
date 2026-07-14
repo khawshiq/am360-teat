@@ -80,7 +80,7 @@
      is why this stops at #6c5ce7 rather than fading out to the pale lilac the kit
      uses behind its illustrations. */
   --grad-header: linear-gradient(135deg, #5546d6 0%, #6c5ce7 100%);
-  --grad-brand: linear-gradient(120deg, #6c5ce7 0%, #0f9aab 100%);
+  /* (--grad-brand is gone: the brand lockup is real artwork now, not gradient text.) */
 
   /* ---- Elevation: light, diffuse, violet-tinted (never plain black) ---- */
   --shadow-sm: 0 1px 2px rgba(31, 24, 80, 0.06);
@@ -158,13 +158,6 @@ h1, h2, h3, h4 { letter-spacing: -0.02em; line-height: 1.25; margin: 0; }
 }
 
 .title { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: var(--s2); }
-
-.brand { font-weight: 800; letter-spacing: -0.03em; font-size: 24px; }
-.brand span {
-  background: var(--grad-brand);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 
 .muted { color: var(--muted); }
 
@@ -270,12 +263,7 @@ button:disabled:hover { background: var(--accent); }
   box-shadow: var(--shadow);
 }
 .topbar .muted { color: rgba(255, 255, 255, 0.78); }
-.topbar .brand span, .topbar .logo .grad {
-  -webkit-text-fill-color: #fff;   /* the gradient text would vanish on blue */
-  background: none;
-  color: #fff;
-}
-/* Controls sitting on the blue: translucent white, not the page's grey */
+/* Controls sitting on the indigo: translucent white, not the page's grey */
 .topbar button.secondary {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.28);
@@ -701,24 +689,11 @@ button.menu-item .muted { font-size: 12px; font-weight: 400; }
 .auth-head { margin-bottom: var(--s6); }
 .auth-head .logo { margin-bottom: var(--s5); }
 
-/* Brand lockup — reused in auth screens and the console headers */
-.logo {
-  display: inline-flex; align-items: center; gap: 9px;
-  font-weight: 800; font-size: 18px; letter-spacing: -0.03em;
-}
-.logo .mark {
-  width: 32px; height: 32px; border-radius: 9px;
-  background: var(--grad-brand);
-  display: grid; place-items: center;
-  color: #fff; font-weight: 800; font-size: 14px;
-  box-shadow: 0 4px 12px -4px rgba(20, 97, 206, 0.55);
-}
-/* On the blue header the mark inverts: white tile, blue letter. */
-.topbar .logo .mark {
-  background: #fff;
-  color: var(--accent);
-  box-shadow: 0 4px 12px -4px rgba(8, 30, 70, 0.35);
-}
+/* Brand lockup. The artwork is now a real logo (see <Logo> / public/logo*.png), so this
+   is only a row to sit it in — e.g. next to the Super Admin "Platform" badge. The old
+   letter-tile mark (a gradient square with an "A") is gone; don't bring it back as a
+   fallback, two marks is no mark. */
+.logo { display: inline-flex; align-items: center; gap: 10px; }
 .auth-title { font-size: 21px; font-weight: 700; letter-spacing: -0.025em; }
 .auth-sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
 .auth-divider { display: flex; align-items: center; gap: var(--s3); margin: var(--s5) 0; }
@@ -730,11 +705,6 @@ button.menu-item .muted { font-size: 12px; font-weight: 400; }
 .field-row { display: flex; justify-content: space-between; align-items: baseline; }
 .link { color: var(--accent2); font-weight: 600; transition: color 0.15s ease; }
 .link:hover { color: var(--accent); }
-.grad {
-  background: var(--grad-brand);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 .btn-block { width: 100%; }
 
 /* ---- Phones -----------------------------------------------------------------

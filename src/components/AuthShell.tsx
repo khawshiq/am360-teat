@@ -1,4 +1,5 @@
 import React from "react";
+import Logo from "./Logo";
 
 // Shared frame for all auth screens (login, register, forgot, reset) so they
 // stay visually consistent: centered card, logo mark, title + subtitle, footer.
@@ -14,10 +15,7 @@ export default function AuthShell({
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-head">
-          <div className="logo">
-            <span className="mark">A</span>
-            <span>AM<span className="grad"> 360</span></span>
-          </div>
+          <Logo height={46} />
           <h1 className="auth-title">{title}</h1>
           {subtitle && <p className="auth-sub">{subtitle}</p>}
         </div>

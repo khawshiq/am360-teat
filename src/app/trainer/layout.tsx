@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth";
 import NavTabs, { type Tab } from "@/components/NavTabs";
+import Logo from "@/components/Logo";
 
 const TABS: Tab[] = [
   { label: "Workspace", href: "/trainer", icon: "workspace" },
@@ -26,7 +27,7 @@ export default function TrainerLayout({ children }: { children: React.ReactNode 
     <div className="container">
       <div className="topbar">
         <Link href="/trainer">
-          <div className="logo"><span className="mark">A</span><span>AM<span className="grad"> 360</span></span></div>
+          <Logo variant="white" height={34} />
         </Link>
         <div className="topbar-user">
           <div className="avatar" title={user.name}>{initials}</div>
