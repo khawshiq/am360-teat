@@ -74,13 +74,10 @@
   --c-cyan: #0891b2;
   --c-magenta: #be185d;
 
-  /* Gradients: the header hero, and the brand lockup.
-     BOTH ends of the header gradient must clear 4.5:1 against white, because white
-     text sits on it end to end. #7a6cef (4.02) and anything lighter does not — which
-     is why this stops at #6c5ce7 rather than fading out to the pale lilac the kit
-     uses behind its illustrations. */
-  --grad-header: linear-gradient(135deg, #5546d6 0%, #6c5ce7 100%);
-  /* (--grad-brand is gone: the brand lockup is real artwork now, not gradient text.) */
+  /* No brand gradients any more. The header is white (see .topbar) and the lockup is
+     real artwork, so neither --grad-header nor --grad-brand had a consumer left. The
+     indigo lives on buttons, the active tab, the focus ring and the tiles — where it
+     carries meaning rather than just filling a band across the top. */
 
   /* ---- Elevation: light, diffuse, violet-tinted (never plain black) ---- */
   --shadow-sm: 0 1px 2px rgba(31, 24, 80, 0.06);
@@ -249,35 +246,34 @@ button:disabled:hover { background: var(--accent); }
 }
 
 /* ---- Topbar -----------------------------------------------------------------
-   The blue gradient hero from the reference. It is full-bleed: negative margins
-   cancel the container's padding, so it runs edge to edge and tucks under the
-   status bar on a phone, while staying a rounded header card on a laptop. */
+   A WHITE app bar, not the indigo hero it used to be. Two reasons, and the second is
+   the real one:
+     1. The logo is teal/blue. On indigo it had to be a white knockout, which threw away
+        the artwork. On white it wears its own colours.
+     2. A saturated band across the top of every screen competes with the data below it.
+        The console's job is to show fees and attendance, not to announce itself.
+   The brand still lands — the indigo is on the buttons, the active tab, the focus ring
+   and the tiles, where it means something.
+
+   Still full-bleed: the negative margins cancel the container's padding, so it runs edge
+   to edge and tucks under the status bar on a phone. */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--s3); flex-wrap: wrap;
-  background: var(--grad-header);
-  color: #fff;
+  background: var(--surface);
+  color: var(--text);
   margin: calc(-1 * var(--pad-t)) calc(-1 * var(--pad-x)) var(--s5);
-  padding: calc(var(--pad-t) + env(safe-area-inset-top)) var(--pad-x) var(--s5);
-  border-radius: 0 0 var(--r-xl) var(--r-xl);
-  box-shadow: var(--shadow);
+  padding: calc(var(--pad-t) + env(safe-area-inset-top)) var(--pad-x) var(--s4);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
-.topbar .muted { color: rgba(255, 255, 255, 0.78); }
-/* Controls sitting on the indigo: translucent white, not the page's grey */
-.topbar button.secondary {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
-  backdrop-filter: blur(4px);
-}
-.topbar button.secondary:hover { background: rgba(255, 255, 255, 0.24); border-color: rgba(255, 255, 255, 0.45); }
 
 .topbar-user { display: flex; align-items: center; gap: var(--s3); }
 .avatar {
   width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #fff;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
   display: grid; place-items: center; font-weight: 700; font-size: 12.5px;
   flex-shrink: 0; text-transform: uppercase;
 }
@@ -619,8 +615,9 @@ button.menu-item .muted { font-size: 12px; font-weight: 400; }
 .badge.pending { color: var(--warn); background: var(--warn-soft); border-color: rgba(167, 100, 0, 0.25); }
 .badge.overdue { color: var(--danger); background: var(--danger-soft); border-color: rgba(207, 48, 64, 0.25); }
 .badge.inactive { color: var(--faint); background: var(--surface-2); border-color: var(--border); }
-/* A badge sitting on the blue header, e.g. the Super Admin "Platform" tag. */
-.badge.on-blue { color: #fff; background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.35); }
+/* The brand-tinted badge — the Super Admin "Platform" tag. (Was `.on-blue`, white-on-blue,
+   back when the header was indigo. On the white bar that was white-on-white.) */
+.badge.brand { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
 
 /* ---- Modal ---- */
 .modal-overlay {
