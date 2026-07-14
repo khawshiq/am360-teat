@@ -985,8 +985,42 @@ button.btn-grad:hover:not(:disabled) {
   background: linear-gradient(90deg, #1d4ed8 0%, #6d28d9 100%);
   box-shadow: 0 14px 28px -10px rgba(76, 29, 149, 0.75);
 }
-button.btn-grad svg { width: 18px; height: 18px; transition: transform 0.15s ease; }
-button.btn-grad:hover:not(:disabled) svg { transform: translateX(3px); }
+/* Only the trailing arrow moves. Scoped to .cta-go, not to `svg`: a CTA can also carry
+   a LEADING icon, and having that slide right on hover looks like a glitch. */
+button.btn-grad svg { width: 18px; height: 18px; }
+button.btn-grad .cta-go,
+button.btn-cta .cta-go { transition: transform 0.15s ease; }
+button.btn-grad:hover:not(:disabled) .cta-go,
+button.btn-cta:hover:not(:disabled) .cta-go { transform: translateX(3px); }
+
+/* The big landing CTAs: [icon] ——— label ——— [arrow]. The label takes the slack so it
+   stays optically centred whatever the icons are. */
+button.btn-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 18px;
+  font-size: 15.5px;
+  font-weight: 600;
+}
+button.btn-cta .cta-label { flex: 1; text-align: center; }
+button.btn-cta svg { width: 19px; height: 19px; flex-shrink: 0; }
+
+/* The quiet twin of .btn-grad. Outlined rather than grey-filled: on the landing card the
+   two buttons are a real choice ("sign up" vs "sign in"), not an action and its cancel,
+   so the second one gets a border and the brand ink instead of being greyed down. */
+button.btn-outline {
+  background: var(--surface);
+  border: 1.5px solid var(--accent-line);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-sm);
+}
+button.btn-outline:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
 
 /* ---- Phones -----------------------------------------------------------------
    Everything above is width-agnostic; this block is the only place that assumes
