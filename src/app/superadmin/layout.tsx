@@ -36,8 +36,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       <div className="topbar">
         <Link href="/superadmin">
           <div className="logo">
-            <Logo variant="white" compact height={38} />
-            <span className="badge on-blue">Platform</span>
+            <Logo compact height={38} />
+            <span className="badge brand">Platform</span>
           </div>
         </Link>
         <div className="topbar-user">

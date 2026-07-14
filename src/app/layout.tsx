@@ -15,7 +15,9 @@ export const metadata: Metadata = {
   description: "Complete academy management — students, fees, attendance, courses and more.",
   manifest: "/manifest.webmanifest",
   applicationName: "AM 360",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "AM 360" },
+  // "default" = dark status-bar icons. On the white app bar, "black-translucent" draws
+  // WHITE icons — i.e. an invisible clock and battery.
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "AM 360" },
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -26,9 +28,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Matches the top of the header gradient, so the Android status bar and the
-  // iOS PWA chrome blend into the app's own header instead of banding against it.
-  themeColor: "#5546d6",
+  // Matches the app bar, which is now WHITE. `viewportFit: "cover"` means the status bar
+  // sits directly on top of .topbar, so any other value bands against it.
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
