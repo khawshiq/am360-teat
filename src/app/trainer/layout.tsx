@@ -27,7 +27,7 @@ export default function TrainerLayout({ children }: { children: React.ReactNode 
     <div className="container">
       <div className="topbar">
         <Link href="/trainer">
-          <Logo variant="white" height={34} />
+          <Logo variant="white" compact height={38} />
         </Link>
         <div className="topbar-user">
           <div className="avatar" title={user.name}>{initials}</div>
