@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth";
 import GoogleSignIn from "@/components/GoogleSignIn";
 import AuthShell from "@/components/AuthShell";
+import AuthField from "@/components/AuthField";
 import { isNativeApp } from "@/lib/platform";
 
 export default function Login() {
@@ -23,23 +24,29 @@ export default function Login() {
   };
   return (
     <AuthShell
-      title="Welcome back"
+      title={<>Welcome <em>back!</em></>}
       subtitle="Sign in to your AM360 account"
       footer={<>No account? <Link className="link" href="/register">Create one</Link></>}
     >
-      <div className="field"><label>Email</label>
-        <input type="email" autoComplete="email" placeholder="you@academy.com" value={email} onChange={e => setEmail(e.target.value)} />
-      </div>
-      <div className="field">
-        <div className="field-row">
-          <label>Password</label>
-          <Link href="/forgot-password" className="link" style={{ fontSize: 12.5 }}>Forgot?</Link>
-        </div>
-        <input type="password" autoComplete="current-password" placeholder="••••••••" value={password}
-          onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
-      </div>
+      <AuthField
+        label="Email" icon="mail" type="email" autoComplete="email"
+        placeholder="you@academy.com" value={email} onChange={setEmail} onEnter={submit}
+      />
+      <AuthField
+        label="Password" icon="lock" type="password" autoComplete="current-password"
+        placeholder="••••••••" value={password} onChange={setPassword} onEnter={submit}
+        right={<Link href="/forgot-password" className="link" style={{ fontSize: 12.5 }}>Forgot?</Link>}
+      />
       {err && <div className="err">{err}</div>}
-      <button disabled={busy} onClick={submit} className="btn-block">{busy ? "Signing in…" : "Sign in"}</button>
+      <button disabled={busy} onClick={submit} className="btn-block btn-grad">
+        {busy ? "Signing in…" : "Sign in"}
+        {!busy && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 12h15M13 6l6 6-6 6" />
+          </svg>
+        )}
+      </button>
 
       {showGoogle && (
         <>
