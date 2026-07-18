@@ -6,6 +6,8 @@ import { cld } from "@/lib/cloudinary";
 import Modal from "./Modal";
 import Pager, { usePager } from "./Pager";
 import ExportMenu from "./ExportMenu";
+import RowMenu from "./RowMenu";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import { upcomingDueDate } from "@/lib/fees";
 import { fmtDay, fmtMonth } from "@/lib/date";
 
@@ -106,6 +108,20 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
     } catch (e: any) { setErr(e.message); }
   };
   const closeStudentModal = () => { setSModalOpen(false); setErr(""); };
+  const toggleStudentStatus = async (s: any) => {
+    try { await api.updateStudent(s.id, { status: s.status === "active" ? "inactive" : "active" }); load(); }
+    catch (e: any) { setErr(e.message); }
+  };
+  const [delTarget, setDelTarget] = useState<any>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState("");
+  const openDeleteStudent = (s: any) => { setDelTarget(s); setDelErr(""); };
+  const confirmDeleteStudent = async () => {
+    setDelBusy(true); setDelErr("");
+    try { await api.deleteStudent(delTarget.id); setDelTarget(null); load(); }
+    catch (e: any) { setDelErr(e.message); }
+    finally { setDelBusy(false); }
+  };
   const [transferId, setTransferId] = useState<string | null>(null);
   const [transferTo, setTransferTo] = useState("");
   const startTransfer = (s: any) => { setTransferId(s.id); setTransferTo(""); };
@@ -228,12 +244,22 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                   <b>{s.name}</b> {s.status !== "active" && <span className="badge inactive">inactive</span>}
                   <div className="muted" style={{ fontSize: 13 }}>{s.phone || "—"} · ₹{s.monthly_fee}/mo{s.batch ? ` · ${s.batch}` : ""}{s.course ? ` · ${s.course}` : ""}</div>
                 </div>
-                <div className="row">
-                  {isAdmin && <button className="secondary" onClick={() => openEditStudent(s)}>Edit</button>}
-                  {isAdmin && <button className="secondary" onClick={() => startTransfer(s)}>Transfer</button>}
-                  {isAdmin && <button className="secondary" onClick={async () => { try { await api.updateStudent(s.id, { status: s.status === "active" ? "inactive" : "active" }); load(); } catch (e: any) { setErr(e.message); } }}>{s.status === "active" ? "Deactivate" : "Activate"}</button>}
-                  {isAdmin && <button className="danger" onClick={async () => { if (confirm("Delete student?")) { await api.deleteStudent(s.id); load(); } }}>Delete</button>}
-                </div>
+                {isAdmin && (
+                  <RowMenu label={`Actions for ${s.name}`}>
+                    {close => (
+                      <>
+                        <button className="menu-item" role="menuitem" onClick={() => { openEditStudent(s); close(); }}><span>Edit</span></button>
+                        <button className="menu-item" role="menuitem" onClick={() => { startTransfer(s); close(); }}><span>Transfer</span></button>
+                        <button className="menu-item" role="menuitem" onClick={() => { toggleStudentStatus(s); close(); }}>
+                          <span>{s.status === "active" ? "Deactivate" : "Activate"}</span>
+                        </button>
+                        <button className="menu-item" role="menuitem" onClick={() => { openDeleteStudent(s); close(); }}>
+                          <span style={{ color: "var(--danger)" }}>Delete</span>
+                        </button>
+                      </>
+                    )}
+                  </RowMenu>
+                )}
               </div>
               {transferId === s.id && (
                 <div className="row" style={{ marginTop: 8 }}>
@@ -298,6 +324,17 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                 <button className="secondary" onClick={closeStudentModal}>Cancel</button>
               </div>
             </Modal>
+          )}
+
+          {delTarget && (
+            <ConfirmDeleteModal
+              title="Delete student"
+              message={<>This permanently deletes <b>{delTarget.name}</b> along with their attendance and fee history. This cannot be undone.</>}
+              busy={delBusy}
+              error={delErr}
+              onConfirm={confirmDeleteStudent}
+              onClose={() => setDelTarget(null)}
+            />
           )}
         </div>
       )}
