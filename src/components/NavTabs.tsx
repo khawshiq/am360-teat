@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import WhatsAppMark from "./WhatsAppMark";
 
 // The console tab strip. One component, two shapes: a row of pills on a laptop,
 // a fixed bottom tab bar on a phone. Which one you get is decided entirely by
@@ -29,6 +30,16 @@ const ICONS: Record<string, JSX.Element> = {
 export type Tab = { label: string; href: string; icon: keyof typeof ICONS };
 
 function Icon({ name }: { name: string }) {
+  // The Notifications tab is WhatsApp specifically, so it gets the real brand mark
+  // instead of the monochrome outline every other tab uses — same brand-identification
+  // exception as elsewhere (see WhatsAppMark.tsx), scoped to just this one icon.
+  if (name === "notifications") {
+    return (
+      <span className="nav-ico" aria-hidden="true">
+        <WhatsAppMark size={19} />
+      </span>
+    );
+  }
   return (
     <span className="nav-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
