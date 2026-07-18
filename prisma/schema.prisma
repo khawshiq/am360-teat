@@ -277,6 +277,28 @@ model NotificationLog {
   @@index([academy_id, branch_id])
 }
 
+// Per-academy WhatsApp Business Cloud API credentials. One row per academy
+// (academy_id is @unique, not just indexed) — every academy connects its OWN Meta
+// WhatsApp Business account, so there is no global token anywhere in this app.
+// access_token is AES-256-GCM encrypted (src/lib/crypto.ts) before it ever reaches
+// this table; decrypt only happens server-side, inside WhatsAppIntegrationService.
+model WhatsAppIntegration {
+  id                   String  @id @default(uuid())
+  academy_id           String  @unique
+  business_account_id  String
+  phone_number_id      String
+  access_token         String                             // encrypted at rest
+  verify_token         String  @default("")                // reserved for a future inbound webhook
+  webhook_secret       String  @default("")                // reserved for a future inbound webhook
+  display_phone_number String  @default("")
+  business_name        String  @default("")
+  status               String  @default("connected")       // connected | disconnected | invalid | expired
+  connected_at         String
+  last_validated_at    String?
+  created_at           String
+  updated_at           String
+}
+
 // Password reset. We store only the SHA-256 hash of the emailed token, never the
 // raw value, and expire it after ~1 hour. One-time use (marked `used`).
 model PasswordResetToken {

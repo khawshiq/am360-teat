@@ -1,11 +1,11 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { json } from "@/lib/api";
-import { resolveNotificationsActor } from "@/lib/notifications";
+import { resolveTenantOrSuperActor } from "@/lib/tenantOrSuperAuth";
 
 export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
-  const r = await resolveNotificationsActor(req, sp.get("academyId") || undefined);
+  const r = await resolveTenantOrSuperActor(req, sp.get("academyId") || undefined);
   if (r.error) return r.error;
   const { academy_id } = r;
 

@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { json, fail, nowIso } from "@/lib/api";
 import { getPlanForAcademy } from "@/lib/plan";
 import { audit } from "@/lib/audit";
-import { whatsappConfigured } from "@/lib/whatsapp";
+import { resolveTenantOrSuperActor } from "@/lib/tenantOrSuperAuth";
+import { whatsappIntegrationService } from "@/lib/whatsapp/service";
 import {
-  collectRecipients, sendBroadcast, resolveNotificationsActor,
+  collectRecipients, sendBroadcast,
   MAX_MESSAGE_LENGTH, RECIPIENT_TYPES, type RecipientType,
 } from "@/lib/notifications";
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
 
   // Owner/admin (their own academy) or Super Admin (any academy, named in `academyId`).
-  const r = await resolveNotificationsActor(req, typeof b.academyId === "string" ? b.academyId : undefined);
+  const r = await resolveTenantOrSuperActor(req, typeof b.academyId === "string" ? b.academyId : undefined);
   if (r.error) return r.error;
   const { academy_id, actor } = r;
 
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   // academy's plan even when a Super Admin is sending on its behalf.
   const plan = await getPlanForAcademy(academy_id);
   if (!plan.features?.messaging)
-    return json({ detail: "Messaging feature is not available in your subscription.", code: "PLAN_LIMIT", feature: "messaging" }, 402);
+    return json({ detail: "This feature is available only in the Pro or Enterprise plan.", code: "PLAN_LIMIT", feature: "messaging" }, 402);
 
   const branchId = typeof b.branchId === "string" ? b.branchId.trim() : "";
   const recipientType = typeof b.recipientType === "string" ? b.recipientType.toUpperCase() : "";
@@ -34,8 +35,10 @@ export async function POST(req: Request) {
   if (message.length > MAX_MESSAGE_LENGTH) return fail(400, `Message must be ${MAX_MESSAGE_LENGTH} characters or fewer`);
   if (/<[a-z][\s\S]*>/i.test(message)) return fail(400, "Message cannot contain HTML markup");
 
-  if (!whatsappConfigured())
-    return fail(503, "WhatsApp is not configured (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)");
+  // Per-academy WhatsApp credentials — never a global token. Fails fast with
+  // "connect first" / "reconnect" before we even look at recipients.
+  const credentials = await whatsappIntegrationService.getCredentials(academy_id);
+  if (!credentials.ok) return fail(400, credentials.error);
 
   // Never trust branchId alone — it must belong to the target academy.
   const branch = await prisma.branch.findFirst({ where: { id: branchId, academy_id } });
@@ -44,7 +47,8 @@ export async function POST(req: Request) {
   const recipients = await collectRecipients(academy_id, branchId, recipientType as RecipientType);
   if (!recipients.length) return fail(400, "No valid WhatsApp recipients found.");
 
-  const { successCount, failedCount, failedNumbers } = await sendBroadcast(recipients, message);
+  const { successCount, failedCount, failedNumbers, authError } = await sendBroadcast(recipients, message, credentials);
+  if (authError) await whatsappIntegrationService.markExpired(academy_id);
   const status = failedCount === 0 ? "completed" : successCount === 0 ? "failed" : "partial";
 
   const log = await prisma.notificationLog.create({ data: {

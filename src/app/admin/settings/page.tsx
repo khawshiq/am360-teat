@@ -50,6 +50,7 @@ export default function Settings() {
           <div className="row">
             <button onClick={save}>Save changes</button>
             <Link href="/change-password"><button className="secondary" type="button">Change Password</button></Link>
+            <Link href="/admin/settings/integrations/whatsapp"><button className="secondary" type="button">WhatsApp Integration</button></Link>
           </div>
         </div>
       </div>
