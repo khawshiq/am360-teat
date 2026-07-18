@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import Pager, { usePager } from "@/components/Pager";
+import RowMenu from "@/components/RowMenu";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 
 const emptyForm = { name: "", address: "", phone: "", branch_code: "", working_hours: "" };
 
@@ -12,6 +14,9 @@ export default function Branches() {
   const [editId, setEditId] = useState<string | null>(null);
   const [err, setErr] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [delTarget, setDelTarget] = useState<any>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState("");
 
   const load = () => api.listBranches(showInactive).then(setItems).catch(e => setErr(e.message));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [showInactive]);
@@ -23,7 +28,13 @@ export default function Branches() {
     catch (e: any) { setErr(e.message); }
   };
   const edit = (b: any) => { setEditId(b.id); setForm({ name: b.name, address: b.address || "", phone: b.phone || "", branch_code: b.branch_code || "", working_hours: b.working_hours || "" }); };
-  const del = async (id: string) => { if (confirm("Delete branch and its students?")) { await api.deleteBranch(id); load(); } };
+  const openDelete = (b: any) => { setDelTarget(b); setDelErr(""); };
+  const confirmDelete = async () => {
+    setDelBusy(true); setDelErr("");
+    try { await api.deleteBranch(delTarget.id); setDelTarget(null); load(); }
+    catch (e: any) { setDelErr(e.message); }
+    finally { setDelBusy(false); }
+  };
   const toggleStatus = async (b: any) => { try { await api.updateBranch(b.id, { status: b.status === "active" ? "inactive" : "active" }); load(); } catch (e: any) { setErr(e.message); } };
   const { page, setPage, totalPages, start, end } = usePager(items.length);
 
@@ -54,16 +65,34 @@ export default function Branches() {
               <div><b>{b.name}</b> {b.branch_code && <span className="muted" style={{ fontSize: 12 }}>({b.branch_code})</span>} {b.status !== "active" && <span className="badge inactive">inactive</span>} <span className="muted" style={{ fontSize: 12 }}>→ open</span></div>
               <div className="muted" style={{ fontSize: 13 }}>{b.address || "—"} · {b.phone || "—"}{b.working_hours ? ` · ${b.working_hours}` : ""}</div>
             </Link>
-            <div className="row">
-              <button className="secondary" onClick={() => edit(b)}>Edit</button>
-              <button className="secondary" onClick={() => toggleStatus(b)}>{b.status === "active" ? "Deactivate" : "Activate"}</button>
-              <button className="danger" onClick={() => del(b.id)}>Delete</button>
-            </div>
+            <RowMenu label={`Actions for ${b.name}`}>
+              {close => (
+                <>
+                  <button className="menu-item" role="menuitem" onClick={() => { edit(b); close(); }}><span>Edit</span></button>
+                  <button className="menu-item" role="menuitem" onClick={() => { toggleStatus(b); close(); }}>
+                    <span>{b.status === "active" ? "Deactivate" : "Activate"}</span>
+                  </button>
+                  <button className="menu-item" role="menuitem" onClick={() => { openDelete(b); close(); }}>
+                    <span style={{ color: "var(--danger)" }}>Delete</span>
+                  </button>
+                </>
+              )}
+            </RowMenu>
           </div>
         ))}
         {!items.length && <p className="muted">No branches yet — add your first one.</p>}
         <Pager page={page} setPage={setPage} totalPages={totalPages} />
       </div>
+      {delTarget && (
+        <ConfirmDeleteModal
+          title="Delete branch"
+          message={<>This permanently deletes <b>{delTarget.name}</b> along with all of its students, attendance and fees. This cannot be undone.</>}
+          busy={delBusy}
+          error={delErr}
+          onConfirm={confirmDelete}
+          onClose={() => setDelTarget(null)}
+        />
+      )}
     </div>
   );
 }
