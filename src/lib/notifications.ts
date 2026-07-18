@@ -1,8 +1,5 @@
 import { prisma } from "./prisma";
-import { sendWhatsAppText } from "./whatsapp";
-import { getUser } from "./auth";
-import { getPlatformUser } from "./superauth";
-import { fail } from "./api";
+import { sendWhatsAppMessage } from "./whatsapp/client";
 
 export const MAX_MESSAGE_LENGTH = 1000;
 export const RECIPIENT_TYPES = ["PARENTS", "STUDENTS", "BOTH"] as const;
@@ -46,51 +43,35 @@ export async function collectRecipients(academy_id: string, branch_id: string, t
 
 const CONCURRENCY = 5;
 
+export type BroadcastCredentials = { phoneNumberId: string; accessToken: string };
+
 // Fires the batch with at most 5 requests in flight, retries a failed send once, and
 // never lets one bad number stop the rest. Failed numbers are returned for the audit log
 // and console.error'd individually so they show up in Vercel's function logs too.
-export async function sendBroadcast(recipients: Recipient[], message: string) {
+// `authError` comes back true if any send failed because the academy's own token was
+// rejected by Meta — the caller marks the integration expired so the NEXT send fails
+// fast with "reconnect" instead of quietly failing every recipient again.
+export async function sendBroadcast(recipients: Recipient[], message: string, credentials: BroadcastCredentials) {
   let successCount = 0;
   let failedCount = 0;
+  let authError = false;
   const failedNumbers: string[] = [];
   let next = 0;
   async function worker() {
     while (next < recipients.length) {
       const r = recipients[next++];
-      let result = await sendWhatsAppText(r.phone, message);
-      if (!result.ok) result = await sendWhatsAppText(r.phone, message);
+      let result = await sendWhatsAppMessage(credentials.phoneNumberId, credentials.accessToken, r.phone, message);
+      if (!result.ok) result = await sendWhatsAppMessage(credentials.phoneNumberId, credentials.accessToken, r.phone, message);
       if (result.ok) successCount++;
       else {
         failedCount++;
         failedNumbers.push(r.phone);
+        if (result.authError) authError = true;
         console.error(`[whatsapp] send failed to ${r.phone}: ${result.error}`);
       }
     }
   }
   const workers = Array.from({ length: Math.min(CONCURRENCY, recipients.length) }, worker);
   await Promise.all(workers);
-  return { successCount, failedCount, failedNumbers };
-}
-
-// Both the academy owner/admin AND the platform Super Admin may send a broadcast. A
-// tenant admin is scoped to their own academy_id from the JWT; the Super Admin token
-// carries no academy_id at all (it sits above every tenant), so it must name the
-// target academy explicitly via `academyIdInput`. Mirrors how
-// `PATCH /api/admin/academies/[id]` acts on a target academy, and audits the same way:
-// under that academy, with "(super admin)" appended to the actor name.
-export async function resolveNotificationsActor(req: Request, academyIdInput?: string) {
-  const tenantUser = await getUser(req);
-  if (tenantUser) {
-    if (!["owner", "admin"].includes(tenantUser.role)) return { error: fail(403, "Admin privileges required") };
-    return { academy_id: tenantUser.academy_id as string, actor: tenantUser };
-  }
-  const platformUser = await getPlatformUser(req);
-  if (platformUser) {
-    const academyId = (academyIdInput || "").trim();
-    if (!academyId) return { error: fail(400, "academyId is required for Super Admin") };
-    const academy = await prisma.academy.findUnique({ where: { id: academyId } });
-    if (!academy) return { error: fail(404, "Academy not found") };
-    return { academy_id: academyId, actor: { id: platformUser.id, name: `${platformUser.name} (super admin)` } };
-  }
-  return { error: fail(401, "Unauthorized") };
+  return { successCount, failedCount, failedNumbers, authError };
 }

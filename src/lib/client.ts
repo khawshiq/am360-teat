@@ -128,6 +128,12 @@ export const api = {
   sendWhatsApp: (b: { branchId: string; recipientType: "PARENTS" | "STUDENTS" | "BOTH"; message: string; academyId?: string }) =>
     request("/notifications/whatsapp/send", { method: "POST", ...body(b) }),
   listNotificationHistory: (skip = 0, limit = 50) => request(`/notifications/history?skip=${skip}&limit=${limit}`),
+  // --- WhatsApp Business integration (per-academy, not a global token) ---
+  getWhatsAppIntegration: () => request("/settings/whatsapp"),
+  connectWhatsApp: (b: { businessAccountId: string; phoneNumberId: string; accessToken: string; verifyToken?: string; webhookSecret?: string }) =>
+    request("/settings/whatsapp/connect", { method: "POST", ...body(b) }),
+  testWhatsAppConnection: () => request("/settings/whatsapp/test", { method: "POST", ...body({}) }),
+  disconnectWhatsApp: () => request("/settings/whatsapp/disconnect", { method: "DELETE" }),
 };
 
 // Upload an image to Cloudinary (signed) and return its hosted URL. No base64 in the DB.
