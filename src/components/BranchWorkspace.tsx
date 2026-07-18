@@ -213,7 +213,16 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   };
   const editSchedule = (s: any) => { setScEditId(s.id); setScForm({ title: s.title, trainer_id: s.trainer_id || "", day_of_week: s.day_of_week, start_time: s.start_time, end_time: s.end_time }); };
   const cancelScheduleEdit = () => { setScEditId(null); setScForm(emptyScForm); };
-  const delSchedule = async (id: string) => { if (confirm("Remove class?")) { await api.deleteSchedule(id); load(); } };
+  const [scDelTarget, setScDelTarget] = useState<any>(null);
+  const [scDelBusy, setScDelBusy] = useState(false);
+  const [scDelErr, setScDelErr] = useState("");
+  const openDeleteSchedule = (s: any) => { setScDelTarget(s); setScDelErr(""); };
+  const confirmDeleteSchedule = async () => {
+    setScDelBusy(true); setScDelErr("");
+    try { await api.deleteSchedule(scDelTarget.id); setScDelTarget(null); load(); }
+    catch (e: any) { setScDelErr(e.message); }
+    finally { setScDelBusy(false); }
+  };
   const schedulePager = usePager(schedules.length);
 
   return (
@@ -480,15 +489,32 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
             <div className="list-item" key={s.id}>
               <div><b>{s.title}</b><div className="muted" style={{ fontSize: 13 }}>{DAYS[s.day_of_week]} · {s.start_time}–{s.end_time}{s.trainer_id ? ` · ${trainers.find(t => t.id === s.trainer_id)?.name || "trainer"}` : ""}</div></div>
               {isAdmin && (
-                <div className="row">
-                  <button className="secondary" onClick={() => editSchedule(s)}>Edit</button>
-                  <button className="danger" onClick={() => delSchedule(s.id)}>Delete</button>
-                </div>
+                <RowMenu label={`Actions for ${s.title}`}>
+                  {close => (
+                    <>
+                      <button className="menu-item" role="menuitem" onClick={() => { editSchedule(s); close(); }}><span>Edit</span></button>
+                      <button className="menu-item" role="menuitem" onClick={() => { openDeleteSchedule(s); close(); }}>
+                        <span style={{ color: "var(--danger)" }}>Delete</span>
+                      </button>
+                    </>
+                  )}
+                </RowMenu>
               )}
             </div>
           ))}
           {!schedules.length && <p className="muted">No classes scheduled.</p>}
           <Pager page={schedulePager.page} setPage={schedulePager.setPage} totalPages={schedulePager.totalPages} />
+
+          {scDelTarget && (
+            <ConfirmDeleteModal
+              title="Delete class"
+              message={<>This removes the <b>{scDelTarget.title}</b> class ({DAYS[scDelTarget.day_of_week]} {scDelTarget.start_time}–{scDelTarget.end_time}) from the schedule. This cannot be undone.</>}
+              busy={scDelBusy}
+              error={scDelErr}
+              onConfirm={confirmDeleteSchedule}
+              onClose={() => setScDelTarget(null)}
+            />
+          )}
         </div>
       )}
     </div>
