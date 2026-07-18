@@ -257,6 +257,26 @@ model AuditLog {
   @@index([academy_id, created_at])
 }
 
+// One branch-wide WhatsApp broadcast (Notifications -> WhatsApp). Counts are
+// snapshotted at send time so history never has to re-derive them from Student rows
+// that may since have moved branch or been deleted.
+model NotificationLog {
+  id               String  @id @default(uuid())
+  academy_id       String
+  branch_id        String
+  recipient_type   String                                // PARENTS | STUDENTS | BOTH
+  message          String
+  total_recipients Int     @default(0)
+  success_count    Int     @default(0)
+  failed_count     Int     @default(0)
+  created_by       String
+  created_at       String
+  status           String  @default("completed")         // completed | partial | failed
+
+  @@index([academy_id, created_at])
+  @@index([academy_id, branch_id])
+}
+
 // Password reset. We store only the SHA-256 hash of the emailed token, never the
 // raw value, and expire it after ~1 hour. One-time use (marked `used`).
 model PasswordResetToken {

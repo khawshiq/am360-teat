@@ -122,6 +122,12 @@ export const api = {
   transferStudent: (id: string, branch_id: string) => request(`/students/${id}/transfer`, { method: "POST", ...body({ branch_id }) }),
   listAudit: (skip = 0, limit = 50) => request(`/audit?skip=${skip}&limit=${limit}`),
   uploadSign: (folder = "am360") => request("/uploads/sign", { method: "POST", ...body({ folder }) }),
+  // --- Notifications (WhatsApp) ---
+  // academyId is only ever sent by a Super Admin caller (sa client below) — a tenant
+  // admin's academy comes from their own token and this stays undefined.
+  sendWhatsApp: (b: { branchId: string; recipientType: "PARENTS" | "STUDENTS" | "BOTH"; message: string; academyId?: string }) =>
+    request("/notifications/whatsapp/send", { method: "POST", ...body(b) }),
+  listNotificationHistory: (skip = 0, limit = 50) => request(`/notifications/history?skip=${skip}&limit=${limit}`),
 };
 
 // Upload an image to Cloudinary (signed) and return its hosted URL. No base64 in the DB.

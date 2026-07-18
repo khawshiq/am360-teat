@@ -12,6 +12,7 @@ const TABS: Tab[] = [
   { label: "Branches", href: "/admin/branches", icon: "branches" },
   { label: "Trainers", href: "/admin/trainers", icon: "trainers" },
   { label: "Courses", href: "/admin/courses", icon: "courses" },
+  { label: "Notifications", href: "/admin/notifications", icon: "notifications" },
   { label: "Audit", href: "/admin/audit", icon: "audit" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];

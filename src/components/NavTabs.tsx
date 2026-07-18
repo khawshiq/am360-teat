@@ -23,6 +23,7 @@ const ICONS: Record<string, JSX.Element> = {
   academies: <><path d="M12 3l9 4.5-9 4.5-9-4.5z" /><path d="M6 10.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5" /></>,
   plans: <><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></>,
   announcements: <><path d="M4 9v6h3l6 4V5L7 9z" /><path d="M17 9a4 4 0 0 1 0 6" /></>,
+  notifications: <><path d="M20.5 4.5a10 10 0 1 0-16.7 12.4L3 21l4.3-.9A10 10 0 0 0 20.5 4.5z" /><path d="M8.5 9.8c0 3.7 3 6.7 6.7 6.7l.2-1.2c.1-.5-.2-1-.6-1.2l-1.6-.7c-.4-.2-.9-.1-1.2.3l-.4.5a5 5 0 0 1-2.5-2.5l.5-.4c.4-.3.5-.8.3-1.2l-.7-1.6c-.2-.4-.7-.7-1.2-.6l-1.2.2z" /></>,
 };
 
 export type Tab = { label: string; href: string; icon: keyof typeof ICONS };
