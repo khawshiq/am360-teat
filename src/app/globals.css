@@ -645,7 +645,17 @@ button.stat-btn.solid:hover .stat-go { color: #fff; background: rgba(255, 255, 2
    The `.tabbar` opt-in matters: without it every in-page `.nav` would also pin
    itself to the bottom of the viewport, and a branch page would render two
    stacked bottom bars. Do not move these rules onto bare `.nav`. */
-.nav { display: flex; gap: 6px; flex-wrap: wrap; margin: var(--s5) 0 var(--s6); }
+/* The bar itself carries a soft indigo wash (mobile's fixed tabbar overrides this
+   below with its own white surface, so this only affects the desktop pill row). The
+   active tab is bumped to a SOLID accent fill so it still reads clearly against the
+   now-tinted bar — a soft tint on both would make them indistinguishable. */
+.nav {
+  display: flex; gap: 6px; flex-wrap: wrap; margin: var(--s5) 0 var(--s6);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-lg);
+  padding: 6px;
+}
 .nav a {
   position: relative;
   display: inline-flex; align-items: center; gap: 8px;
@@ -659,9 +669,9 @@ button.stat-btn.solid:hover .stat-go { color: #fff; background: rgba(255, 255, 2
 }
 .nav a:hover { color: var(--text); background: var(--surface); }
 .nav a.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
   font-weight: 600;
 }
 .nav .nav-ico { display: grid; place-items: center; flex-shrink: 0; }
