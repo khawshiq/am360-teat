@@ -4,6 +4,8 @@ import { api } from "@/lib/client";
 import { useImageUpload } from "@/lib/useImageUpload";
 import { cld } from "@/lib/cloudinary";
 import Pager, { usePager } from "@/components/Pager";
+import RowMenu from "@/components/RowMenu";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 
 const emptyForm = { name: "", email: "", username: "", password: "", phone: "", address: "", photo_url: "", joining_date: "", branch_ids: [] as string[] };
 
@@ -36,7 +38,16 @@ export default function Trainers() {
   };
   const edit = (t: any) => { setEditId(t.id); setForm({ name: t.name, email: t.email, username: t.username || "", password: "", phone: t.phone || "", address: t.address || "", photo_url: t.photo_url || "", joining_date: t.joining_date || "", branch_ids: t.branch_ids || (t.branch_id ? [t.branch_id] : []) }); };
   const onPhoto = (e: any) => onFileChange(e, url => setForm((s: any) => ({ ...s, photo_url: url })), setErr);
-  const del = async (id: string) => { if (confirm("Delete trainer?")) { await api.deleteTrainer(id); load(); } };
+  const [delTarget, setDelTarget] = useState<any>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState("");
+  const openDelete = (t: any) => { setDelTarget(t); setDelErr(""); };
+  const confirmDelete = async () => {
+    setDelBusy(true); setDelErr("");
+    try { await api.deleteTrainer(delTarget.id); setDelTarget(null); load(); }
+    catch (e: any) { setDelErr(e.message); }
+    finally { setDelBusy(false); }
+  };
   const resetPw = async (t: any) => {
     if (!confirm(`Reset password for ${t.name}? A new temporary password will be issued.`)) return;
     try { const res = await api.resetTrainerPassword(t.id); setTempPw({ name: t.name, pw: res.temp_password }); }
@@ -104,17 +115,35 @@ export default function Trainers() {
               <div><b>{t.name}</b> {t.status !== "active" && <span className="badge inactive">inactive</span>}</div>
               <div className="muted" style={{ fontSize: 13 }}>{t.email} · {(t.branch_ids || []).map(bName).join(", ") || "—"}</div>
             </div>
-            <div className="row">
-              <button className="secondary" onClick={() => edit(t)}>Edit</button>
-              <button className="secondary" onClick={() => resetPw(t)}>Reset Password</button>
-              <button className="secondary" onClick={() => toggleStatus(t)}>{t.status === "active" ? "Deactivate" : "Activate"}</button>
-              <button className="danger" onClick={() => del(t.id)}>Delete</button>
-            </div>
+            <RowMenu label={`Actions for ${t.name}`}>
+              {close => (
+                <>
+                  <button className="menu-item" role="menuitem" onClick={() => { edit(t); close(); }}><span>Edit</span></button>
+                  <button className="menu-item" role="menuitem" onClick={() => { resetPw(t); close(); }}><span>Reset Password</span></button>
+                  <button className="menu-item" role="menuitem" onClick={() => { toggleStatus(t); close(); }}>
+                    <span>{t.status === "active" ? "Deactivate" : "Activate"}</span>
+                  </button>
+                  <button className="menu-item" role="menuitem" onClick={() => { openDelete(t); close(); }}>
+                    <span style={{ color: "var(--danger)" }}>Delete</span>
+                  </button>
+                </>
+              )}
+            </RowMenu>
           </div>
         ))}
         {!items.length && <p className="muted">No trainers yet.</p>}
         <Pager page={page} setPage={setPage} totalPages={totalPages} />
       </div>
+      {delTarget && (
+        <ConfirmDeleteModal
+          title="Delete trainer"
+          message={<>This permanently deletes <b>{delTarget.name}</b> and their login. This cannot be undone.</>}
+          busy={delBusy}
+          error={delErr}
+          onConfirm={confirmDelete}
+          onClose={() => setDelTarget(null)}
+        />
+      )}
     </div>
   );
 }
