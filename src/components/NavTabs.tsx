@@ -29,13 +29,25 @@ const ICONS: Record<string, JSX.Element> = {
 
 export type Tab = { label: string; href: string; icon: keyof typeof ICONS };
 
-// Branches/Trainers reuse the exact identity hues their dashboard StatTiles already use
-// (--c-cyan / --c-violet — see admin/page.tsx), so this needed no new color and no
-// re-validation. A fixed stroke color (not currentColor) so the icon stays that color
-// whether the tab is active, hovered, or not — same treatment as the WhatsApp mark below.
+// Every tab gets its own color. Branches/Trainers/Audit/Settings reuse identity hues
+// already validated elsewhere in the app (the dashboard StatTiles' --c-cyan/--c-violet,
+// and --c-blue/--c-magenta which are validated but weren't used in the nav yet).
+// Dashboard's gold and Courses' rust-orange are the only genuinely NEW hues — run
+// through the dataviz skill's validate_palette.js in this exact left-to-right order
+// (dashboard, branches, trainers, courses, [whatsapp green], audit, settings) before
+// adding them, same as the WhatsApp mark below: colorblind separation and contrast are
+// computed, never eyeballed. Both only clear ~2-3:1 against white, so — like the
+// WhatsApp green — they are fixed icon-fill colors only, never text.
+// Kept as raw hex here rather than new --c-* CSS vars: they were validated for THIS
+// specific sequence, not against every other place a color might get reused, so they
+// should not look like general-purpose design tokens available elsewhere.
 const FIXED_ICON_COLOR: Record<string, string> = {
+  dashboard: "#ca8a04",
   branches: "var(--c-cyan)",
   trainers: "var(--c-violet)",
+  courses: "#c2410c",
+  audit: "var(--c-blue)",
+  settings: "var(--c-magenta)",
 };
 
 function Icon({ name }: { name: string }) {
