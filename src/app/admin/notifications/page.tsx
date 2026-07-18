@@ -91,8 +91,11 @@ export default function WhatsAppNotifications() {
         </div>
       </div>
 
-      <div className="card" style={{ alignSelf: "start" }}>
-        <div className="section-title">Preview</div>
+      <div className="card" style={{ alignSelf: "start", borderLeft: "3px solid #25D366" }}>
+        <div className="row" style={{ gap: 10, alignItems: "center", marginBottom: 2 }}>
+          <WhatsAppMark size={30} />
+          <div className="section-title" style={{ marginBottom: 0 }}>Preview</div>
+        </div>
         <div>
           <div className="field">
             <label>Selected branch</label>
