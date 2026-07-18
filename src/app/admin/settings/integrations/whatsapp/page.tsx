@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import WhatsAppMark from "@/components/WhatsAppMark";
 
 const emptyForm = { businessAccountId: "", phoneNumberId: "", accessToken: "", verifyToken: "", webhookSecret: "" };
 
@@ -57,8 +58,11 @@ export default function WhatsAppIntegrationSettings() {
 
   return (
     <div className="split wide">
-      <div className="card">
-        <div className="section-title">WhatsApp Business connection</div>
+      <div className="card" style={{ borderLeft: "3px solid #25D366" }}>
+        <div className="row" style={{ gap: 10, alignItems: "center", marginBottom: 2 }}>
+          <WhatsAppMark />
+          <div className="section-title" style={{ marginBottom: 0 }}>WhatsApp Business connection</div>
+        </div>
         {!status ? <div className="muted">Loading…</div> : (
           <div>
             <div className="field">
@@ -83,8 +87,11 @@ export default function WhatsAppIntegrationSettings() {
       </div>
 
       {showForm && (
-        <div className="card" style={{ alignSelf: "start" }}>
-          <div className="section-title">{connected ? "Update credentials" : "Connect WhatsApp Business"}</div>
+        <div className="card" style={{ alignSelf: "start", borderLeft: "3px solid #25D366" }}>
+          <div className="row" style={{ gap: 10, alignItems: "center", marginBottom: 2 }}>
+            <WhatsAppMark size={30} />
+            <div className="section-title" style={{ marginBottom: 0 }}>{connected ? "Update credentials" : "Connect WhatsApp Business"}</div>
+          </div>
           <div>
             <div className="field"><label>Business Account ID</label><input value={form.businessAccountId} onChange={set("businessAccountId")} /></div>
             <div className="field"><label>Phone Number ID</label><input value={form.phoneNumberId} onChange={set("phoneNumberId")} /></div>

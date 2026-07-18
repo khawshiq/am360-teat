@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
+import WhatsAppMark from "@/components/WhatsAppMark";
 
 const MAX_LEN = 1000;
 const RECIPIENT_LABELS: Record<string, string> = {
@@ -36,8 +37,11 @@ export default function WhatsAppNotifications() {
 
   return (
     <div className="split sidebar">
-      <div className="card">
-        <div className="section-title">Send WhatsApp message</div>
+      <div className="card" style={{ borderLeft: "3px solid #25D366" }}>
+        <div className="row" style={{ gap: 10, alignItems: "center", marginBottom: 2 }}>
+          <WhatsAppMark />
+          <div className="section-title" style={{ marginBottom: 0 }}>Send WhatsApp message</div>
+        </div>
         <div>
           <div className="field">
             <label>Branch</label>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import Pager from "@/components/Pager";
+import WhatsAppMark from "@/components/WhatsAppMark";
 
 const PAGE_SIZE = 20;
 const RECIPIENT_LABELS: Record<string, string> = {
@@ -26,7 +27,10 @@ export default function NotificationHistory() {
   return (
     <div>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div className="title">WhatsApp history {d && <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>({d.total})</span>}</div>
+        <div className="row" style={{ gap: 10, alignItems: "center" }}>
+          <WhatsAppMark size={28} />
+          <div className="title" style={{ marginBottom: 0 }}>WhatsApp history {d && <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}>({d.total})</span>}</div>
+        </div>
         <Link href="/admin/notifications"><button type="button" className="secondary">Send a message</button></Link>
       </div>
 
