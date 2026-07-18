@@ -29,6 +29,15 @@ const ICONS: Record<string, JSX.Element> = {
 
 export type Tab = { label: string; href: string; icon: keyof typeof ICONS };
 
+// Branches/Trainers reuse the exact identity hues their dashboard StatTiles already use
+// (--c-cyan / --c-violet — see admin/page.tsx), so this needed no new color and no
+// re-validation. A fixed stroke color (not currentColor) so the icon stays that color
+// whether the tab is active, hovered, or not — same treatment as the WhatsApp mark below.
+const FIXED_ICON_COLOR: Record<string, string> = {
+  branches: "var(--c-cyan)",
+  trainers: "var(--c-violet)",
+};
+
 function Icon({ name }: { name: string }) {
   // The Notifications tab is WhatsApp specifically, so it gets the real brand mark
   // instead of the monochrome outline every other tab uses — same brand-identification
@@ -42,7 +51,7 @@ function Icon({ name }: { name: string }) {
   }
   return (
     <span className="nav-ico" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+      <svg viewBox="0 0 24 24" fill="none" stroke={FIXED_ICON_COLOR[name] || "currentColor"} strokeWidth="1.7"
            strokeLinecap="round" strokeLinejoin="round">
         {ICONS[name]}
       </svg>
