@@ -29,25 +29,24 @@ const ICONS: Record<string, JSX.Element> = {
 
 export type Tab = { label: string; href: string; icon: keyof typeof ICONS };
 
-// Every tab gets its own color. Branches/Trainers/Audit/Settings reuse identity hues
-// already validated elsewhere in the app (the dashboard StatTiles' --c-cyan/--c-violet,
-// and --c-blue/--c-magenta which are validated but weren't used in the nav yet).
-// Dashboard's gold and Courses' rust-orange are the only genuinely NEW hues — run
-// through the dataviz skill's validate_palette.js in this exact left-to-right order
-// (dashboard, branches, trainers, courses, [whatsapp green], audit, settings) before
-// adding them, same as the WhatsApp mark below: colorblind separation and contrast are
-// computed, never eyeballed. Both only clear ~2-3:1 against white, so — like the
-// WhatsApp green — they are fixed icon-fill colors only, never text.
-// Kept as raw hex here rather than new --c-* CSS vars: they were validated for THIS
-// specific sequence, not against every other place a color might get reused, so they
-// should not look like general-purpose design tokens available elsewhere.
+// Every tab gets its own color, darkened ~one step past the dashboard StatTile hues
+// (Branches/Trainers/Audit/Settings started as the exact --c-cyan/--c-violet/--c-blue/
+// --c-magenta tile colors, but "darker/more intense" was asked for here specifically —
+// darkening the shared --c-* vars would also darken the dashboard tiles, so these are
+// deliberately separate, nav-only values). Cyan needed a smaller step than the others:
+// pushed as dark as Tailwind's cyan-800 it drops below the chroma floor (reads as gray,
+// exactly the "--g-cyan" trap noted in frontend.md) — this stops one shade short of that.
+// Re-validated with the dataviz skill's validate_palette.js in the REAL left-to-right nav
+// order (dashboard, branches, trainers, courses, [notifications=WhatsApp green], audit,
+// settings) — that's what's actually adjacent on screen. Kept as raw hex, not --c-* vars:
+// validated for this one sequence, not for reuse anywhere a color is needed next.
 const FIXED_ICON_COLOR: Record<string, string> = {
-  dashboard: "#ca8a04",
-  branches: "var(--c-cyan)",
-  trainers: "var(--c-violet)",
-  courses: "#c2410c",
-  audit: "var(--c-blue)",
-  settings: "var(--c-magenta)",
+  dashboard: "#854d0e",
+  branches: "#0a7fa0",
+  trainers: "#5b21b6",
+  courses: "#9a3412",
+  audit: "#1d4ed8",
+  settings: "#9d174d",
 };
 
 function Icon({ name }: { name: string }) {
