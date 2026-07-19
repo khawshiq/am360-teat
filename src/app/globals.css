@@ -677,6 +677,17 @@ button.stat-btn.solid:hover .stat-go { color: #fff; background: rgba(255, 255, 2
 .nav .nav-ico { display: grid; place-items: center; flex-shrink: 0; }
 .nav .nav-ico svg { width: 18px; height: 18px; display: block; }
 
+/* The console top bar (NavTabs adds .tabbar) wears a BLUE wash instead of the indigo
+   one, per request. Scoped to .tabbar so the in-page BranchWorkspace pill row keeps the
+   indigo tint; desktop only, since the mobile media query below flips this same bar to a
+   white fixed surface. --c-blue (#1461ce) at the same 10%/30% strengths as --accent-soft
+   /--accent-line, so it reads as a tint, not a slab. The active pill stays solid --accent
+   (indigo) and still separates cleanly from a light-blue bar. */
+.nav.tabbar {
+  background: rgba(20, 97, 206, 0.10);
+  border-color: rgba(20, 97, 206, 0.30);
+}
+
 @media (max-width: 720px) {
   .nav.tabbar {
     position: fixed;
