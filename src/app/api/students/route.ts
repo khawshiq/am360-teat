@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { auth, json, fail, nowIso, todayStr, trainerBranchIds, planError } from "@/lib/api";
 import { assertWithinPlan } from "@/lib/plan";
+import { accrueFeesSafely } from "@/lib/billing";
 import { audit } from "@/lib/audit";
 
 const STUDENT_FIELDS = ["name","parent_name","phone","alt_mobile","email","address","dob","gender","admission_date","batch","course","photo_url","emergency_contact","medical_notes","monthly_fee","join_date","notes"];
@@ -28,11 +29,20 @@ export async function POST(req: Request) {
     return fail(403, "Trainers can only add students to their assigned branches");
   if (!(await prisma.branch.findFirst({ where: { id: b.branch_id, academy_id: u.academy_id } }))) return fail(400, "Invalid branch");
   try { await assertWithinPlan(u.academy_id, "students"); } catch (e) { const r = planError(e); if (r) return r; throw e; }
+  // One joining date, two columns. The form sends one value; whichever of the two the
+  // client filled seeds the other, so a caller can no longer set admission_date alone and
+  // leave join_date on today's date — billingAnchorDay() prefers admission_date and
+  // silently falls back to join_date, which put a due date on a day nobody typed.
+  const joined = b.admission_date || b.join_date || todayStr();
   const data: any = { academy_id: u.academy_id, branch_id: b.branch_id, status: "active", created_at: nowIso(),
-    join_date: b.join_date || todayStr(), admission_date: b.admission_date || todayStr() };
+    join_date: joined, admission_date: joined };
   for (const k of STUDENT_FIELDS) if (b[k] != null) data[k] = b[k];
   if (data.monthly_fee == null) data.monthly_fee = 0;
   const student = await prisma.student.create({ data });
   await audit(u, "student.create", "student", student.id, { name: student.name });
+  // Joining IS the billing event: raise their first monthly fee now, dated to their joining
+  // day, so the fees tab and the dashboard show it the moment they are added rather than
+  // waiting for someone to click "Create". See src/lib/billing.ts.
+  await accrueFeesSafely(u.academy_id, todayStr(), { studentIds: [student.id], actor: u });
   return json(student);
 }

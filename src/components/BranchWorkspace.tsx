@@ -23,6 +23,15 @@ const emptyStudentForm = {
   emergency_contact: "", medical_notes: "", notes: "", status: "active",
 };
 
+// "2026-07-20" -> "20th". The joining date is the billing anchor, so the form says out loud
+// which day of the month it just committed the student to — a date field alone does not.
+const ordinal = (d: string) => {
+  const n = Number(d.slice(8, 10));
+  if (!n) return "";
+  const s = n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th";
+  return `${n}${s}`;
+};
+
 export default function BranchWorkspace({ branchId, isAdmin }: { branchId: string; isAdmin: boolean }) {
   const TABS = ["students", "attendance", "fees", "schedule"] as const;
   const [tab, setTab] = useState<(typeof TABS)[number]>("attendance");
@@ -87,13 +96,16 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   const [sModalOpen, setSModalOpen] = useState(false);
   const [sEditId, setSEditId] = useState<string | null>(null);
   const { uploading: sUploading, onFileChange: onStudentPhotoChange } = useImageUpload("am360/students");
-  const openAddStudent = () => { setSEditId(null); setSForm(emptyStudentForm); setSModalOpen(true); };
+  // Pre-filled with today, not blank. A blank joining date used to fall through to today's
+  // date server-side anyway — but invisibly, so nobody knew which day the student had just
+  // been signed up to pay on. Now it is on screen and can be back-dated before saving.
+  const openAddStudent = () => { setSEditId(null); setSForm({ ...emptyStudentForm, admission_date: today }); setSModalOpen(true); };
   const openEditStudent = (s: any) => {
     setSEditId(s.id);
     setSForm({
       name: s.name || "", phone: s.phone || "", monthly_fee: String(s.monthly_fee ?? ""), parent_name: s.parent_name || "",
       alt_mobile: s.alt_mobile || "", email: s.email || "", address: s.address || "", dob: s.dob || "", gender: s.gender || "",
-      admission_date: s.admission_date || "", batch: s.batch || "", course: s.course || "", photo_url: s.photo_url || "",
+      admission_date: s.admission_date || s.join_date || "", batch: s.batch || "", course: s.course || "", photo_url: s.photo_url || "",
       emergency_contact: s.emergency_contact || "", medical_notes: s.medical_notes || "", notes: s.notes || "", status: s.status || "active",
     });
     setSModalOpen(true);
@@ -101,10 +113,14 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   const onStudentPhoto = (e: any) => onStudentPhotoChange(e, url => setSForm((s: any) => ({ ...s, photo_url: url })), setErr);
   const saveStudent = async () => {
     try {
+      // One field on screen, both columns on the row. The server keeps them in step too,
+      // but sending both means an existing student's stale join_date is corrected on the
+      // first save rather than lingering as a second, disagreeing billing anchor.
       const data: any = { ...sForm, monthly_fee: parseFloat(sForm.monthly_fee) || 0 };
+      if (sForm.admission_date) data.join_date = sForm.admission_date;
       if (sEditId) await api.updateStudent(sEditId, data);
       else await api.createStudent({ ...data, branch_id: branchId });
-      setSModalOpen(false); load();
+      setSModalOpen(false); load(); loadFeesTrainers();
     } catch (e: any) { setErr(e.message); }
   };
   const closeStudentModal = () => { setSModalOpen(false); setErr(""); };
@@ -152,9 +168,22 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
   };
 
   // ---- fees ----
+  // The fee a row acts on: the OLDEST one still owed — not this month's. Now that missed
+  // months accrue instead of quietly never existing, a student can owe March, April and
+  // July at once, and "Record payment" has to clear March first; paying the newest leaves
+  // the oldest sitting there overdue forever. Owing nothing, we fall back to the most
+  // recent settled fee so the row still shows a status and its receipts.
   const feeByStudent = useMemo(() => {
-    const m: Record<string, any> = {}; for (const f of fees) if (f.month === today.slice(0, 7)) m[f.student_id] = f; return m;
-  }, [fees, today]);
+    const m: Record<string, any> = {};
+    for (const f of fees) {
+      const cur = m[f.student_id];
+      if (!cur) { m[f.student_id] = f; continue; }
+      const owed = f.status !== "paid", curOwed = cur.status !== "paid";
+      if (owed !== curOwed) { if (owed) m[f.student_id] = f; continue; }
+      if (owed ? f.month < cur.month : f.month > cur.month) m[f.student_id] = f;
+    }
+    return m;
+  }, [fees]);
 
   // Payment history rolled up per student, across every month — not just the current one.
   // `last_paid` is their most recent payment. `next_due` is the earliest date they still
@@ -164,21 +193,23 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
     const feesOf: Record<string, any[]> = {};
     for (const f of fees) (feesOf[f.student_id] ||= []).push(f);
 
-    const m: Record<string, { last_paid: string | null; next_due: string | null; outstanding: number; upcoming: boolean }> = {};
+    const m: Record<string, { last_paid: string | null; next_due: string | null; outstanding: number; upcoming: boolean; unpaid: number; overdue: number }> = {};
     for (const s of students) {
       const fs = feesOf[s.id] || [];
-      let last_paid: string | null = null, next_due: string | null = null, outstanding = 0;
+      let last_paid: string | null = null, next_due: string | null = null, outstanding = 0, unpaid = 0, overdue = 0;
       for (const f of fs) {
         for (const p of f.payments || [])
           if (p.paid_date && (!last_paid || p.paid_date > last_paid)) last_paid = p.paid_date;
         if (f.status !== "paid") {
+          unpaid++;
+          if (f.status === "overdue") overdue++;
           outstanding += (f.amount - f.paid_amount);
           if (f.due_date && (!next_due || f.due_date < next_due)) next_due = f.due_date;
         }
       }
       const owes = !!next_due;
       if (!owes) next_due = upcomingDueDate(s, fs.map(f => f.month), today);
-      m[s.id] = { last_paid, next_due, outstanding, upcoming: !owes };
+      m[s.id] = { last_paid, next_due, outstanding, upcoming: !owes, unpaid, overdue };
     }
     return m;
   }, [fees, students, today]);
@@ -313,7 +344,15 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                 </div>
               </div>
               <div className="row">
-                <div className="field" style={{ flex: 1 }}><label>Admission date</label><input type="date" value={sForm.admission_date} onChange={e => setSForm({ ...sForm, admission_date: e.target.value })} /></div>
+                <div className="field" style={{ flex: 1 }}>
+                  <label>Joining date</label>
+                  <input type="date" value={sForm.admission_date} onChange={e => setSForm({ ...sForm, admission_date: e.target.value })} />
+                  <span className="muted" style={{ fontSize: 12, marginTop: 4, display: "block" }}>
+                    {sForm.admission_date
+                      ? `Fees fall due on the ${ordinal(sForm.admission_date)} of every month.`
+                      : "Sets the day of the month fees fall due."}
+                  </span>
+                </div>
                 <div className="field" style={{ flex: 1 }}>
                   <label>Status</label>
                   <select value={sForm.status} onChange={e => setSForm({ ...sForm, status: e.target.value })}>
@@ -411,17 +450,23 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
             return (
               <div className="list-item" key={s.id} style={{ flexDirection: "column", alignItems: "stretch" }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
-                  <div><b>{s.name}</b><div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {fmtMonth(today)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}</div></div>
+                  <div>
+                    <b>{s.name}</b>
+                    <div className="muted" style={{ fontSize: 13 }}>₹{s.monthly_fee}/mo · {fmtMonth(f ? f.month : today)}{f ? ` · paid ₹${f.paid_amount} of ₹${f.amount}` : ""}</div>
+                  </div>
                   <div className="row">
+                    {/* More than one month owed is its own fact — a single "overdue" badge
+                        reads the same whether they missed one cycle or five. */}
+                    {h && h.unpaid > 1 && <span className="badge pending">{h.unpaid} months due</span>}
                     {f ? <span className={`badge ${f.status}`} style={{ textTransform: "capitalize" }}>{f.status}</span>
                       : <span className="muted" style={{ fontSize: 13 }}>no record</span>}
                     {isAdmin && !f && <button className="secondary" onClick={() => createFee(s)}>Create</button>}
                     {isAdmin && f && f.status !== "paid" && <button onClick={() => openPay(f)}>Record payment</button>}
                   </div>
                 </div>
-                {/* The three dates that answer the whole question: when this month's fee fell
-                    due, when they last actually paid, and when they next owe. All three are
-                    anchored on the student's admission day, so they can never disagree. */}
+                {/* The three dates that answer the whole question: when the fee on this row
+                    fell due, when they last actually paid, and when they next owe. All three
+                    are anchored on the student's joining day, so they can never disagree. */}
                 <div className="muted" style={{ fontSize: 12.5, marginTop: 4, display: "flex", flexWrap: "wrap", gap: "2px 14px" }}>
                   <span>Fee due: {f ? fmtDay(f.due_date) : "—"}</span>
                   <span>Last paid: {h?.last_paid ? fmtDay(h.last_paid) : "never"}</span>
@@ -444,7 +489,11 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
 
           {payTarget && (
             <Modal title={`Record payment — ${students.find(s => s.id === payTarget.student_id)?.name || ""}`} onClose={closePayModal}>
-              <p className="muted" style={{ fontSize: 13 }}>Total ₹{payTarget.amount} · already paid ₹{payTarget.paid_amount}</p>
+              {/* The month is on the modal because arrears mean this is not necessarily
+                  the current one — it is the oldest month the student still owes. */}
+              <p className="muted" style={{ fontSize: 13 }}>
+                {fmtMonth(payTarget.month)} · due {fmtDay(payTarget.due_date)} · total ₹{payTarget.amount} · already paid ₹{payTarget.paid_amount}
+              </p>
               <div className="field"><label>Amount</label><input value={payAmount} onChange={e => setPayAmount(e.target.value)} /></div>
               <div className="field">
                 <label>Method</label>

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { adminAuth, json, fail, todayStr } from "@/lib/api";
 import { feeStatusFor, anchoredDueDate } from "@/lib/fees";
+import { accrueFeesSafely } from "@/lib/billing";
 import { fmtDay, fmtMonth } from "@/lib/date";
 
 // The rows BEHIND a dashboard tile. `/analytics/dashboard` answers "how many"; this
@@ -139,6 +140,9 @@ export async function GET(req: Request) {
 
     case "pending":
     case "overdue": {
+      // The tile that opened this modal accrued first; do it here too so a drill-down
+      // opened from a stale page still lists the same rows the tile counted.
+      await accrueFeesSafely(aid, today);
       const { studentById } = await names();
       const fees = await prisma.fee.findMany({ where: { academy_id: aid } });
       const want = metric;                                       // "pending" | "overdue"

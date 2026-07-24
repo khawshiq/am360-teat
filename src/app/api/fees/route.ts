@@ -1,12 +1,16 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
-import { auth, adminAuth, json, fail, nowIso, trainerBranchIds } from "@/lib/api";
+import { auth, adminAuth, json, fail, nowIso, todayStr, trainerBranchIds } from "@/lib/api";
 import { billingAnchorDay, dueDateFor, feeStatusFor, withFeeStatus } from "@/lib/fees";
+import { accrueFeesSafely } from "@/lib/billing";
 import { audit } from "@/lib/audit";
 
 export async function GET(req: Request) {
   const a = await auth(req); if (a.error) return a.error;
   const u = a.user; const branch_id = new URL(req.url).searchParams.get("branch_id");
+  // Same accrual the dashboard runs, so the fees tab and the Overdue tile can never be
+  // looking at different sets of rows. Idempotent, so running it on both is free.
+  await accrueFeesSafely(u.academy_id, todayStr());
   const where: any = { academy_id: u.academy_id };
   const scope = async (branchWhere: any) => {
     const ids = (await prisma.student.findMany({ where: { academy_id: u.academy_id, ...branchWhere }, select: { id: true } })).map((s: any) => s.id);

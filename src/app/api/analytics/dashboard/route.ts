@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { adminAuth, json, todayStr } from "@/lib/api";
 import { feeStatusFor } from "@/lib/fees";
+import { accrueFeesSafely } from "@/lib/billing";
 
 export async function GET(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
@@ -25,6 +26,10 @@ export async function GET(req: Request) {
   const dow = (new Date().getDay() + 6) % 7;
   const classes_today = await prisma.schedule.count({ where: { academy_id: aid, day_of_week: dow } });
 
+  // Raise anything due but never raised BEFORE counting. Without this the Overdue tile can
+  // only ever show fees an admin remembered to create by hand — which is why it read ₹0 for
+  // academies that never touched the fees tab. See src/lib/billing.ts.
+  await accrueFeesSafely(aid, today);
   const fees = await prisma.fee.findMany({ where: { academy_id: aid } });
   const fee_collected = fees.reduce((s: number, f: any) => s + f.paid_amount, 0);
   // Derive, don't read the column — see src/lib/fees.ts. Grade each fee against its

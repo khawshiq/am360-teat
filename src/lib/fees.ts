@@ -36,6 +36,24 @@ export function nextMonth(month: string | null | undefined): string | null {
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
 }
 
+// "2026-07" + n months, n may be negative. Used to bound how far back accrual will
+// reach — see src/lib/billing.ts.
+export function addMonths(month: string | null | undefined, n: number): string | null {
+  if (!isMonth(month)) return null;
+  const [y, m] = month.split("-").map(Number);
+  const t = y * 12 + (m - 1) + n;
+  const yy = Math.floor(t / 12);
+  return `${String(yy).padStart(4, "0")}-${String(t - yy * 12 + 1).padStart(2, "0")}`;
+}
+
+// The month a student's billing starts: the month they joined. Their admission date is
+// the anchor, their join date the fallback — the same precedence as billingAnchorDay,
+// so the month and the day-of-month can never come from two different fields.
+export function billingStartMonth(student: StudentLike | null | undefined): string | null {
+  const d = student?.admission_date || student?.join_date;
+  return isDate(d) ? d.slice(0, 7) : null;
+}
+
 // The day of the month a student's billing cycle falls on: the day they were admitted.
 // Falls back to their join date. Null when we know neither.
 export function billingAnchorDay(student: StudentLike | null | undefined): number | null {
