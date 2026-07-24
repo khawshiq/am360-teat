@@ -1,5 +1,5 @@
 export const runtime = "nodejs";
-import { json, fail } from "@/lib/api";
+import { json, fail, configError } from "@/lib/api";
 import { getPlanForAcademy } from "@/lib/plan";
 import { audit } from "@/lib/audit";
 import { resolveTenantOrSuperActor } from "@/lib/tenantOrSuperAuth";
@@ -21,13 +21,22 @@ export async function POST(req: Request) {
   const parsed = connectSchema.safeParse(b);
   if (!parsed.success) return fail(400, parsed.error.issues[0]?.message || "Invalid input");
 
-  const integration = await whatsappIntegrationService.connect(academy_id, {
-    business_account_id: parsed.data.businessAccountId,
-    phone_number_id: parsed.data.phoneNumberId,
-    access_token: parsed.data.accessToken,
-    verify_token: parsed.data.verifyToken,
-    webhook_secret: parsed.data.webhookSecret,
-  });
+  // connect() encrypts the token before it touches the DB, so an unset/short
+  // ENCRYPTION_KEY fails HERE, on an otherwise perfectly valid form.
+  let integration;
+  try {
+    integration = await whatsappIntegrationService.connect(academy_id, {
+      business_account_id: parsed.data.businessAccountId,
+      phone_number_id: parsed.data.phoneNumberId,
+      access_token: parsed.data.accessToken,
+      verify_token: parsed.data.verifyToken,
+      webhook_secret: parsed.data.webhookSecret,
+    });
+  } catch (e) {
+    const r = configError(e);
+    if (r) return r;
+    throw e;
+  }
 
   // Never log the token itself — only identifiers.
   await audit({ ...actor, academy_id }, "whatsapp_integration.connect", "whatsapp_integration", integration.id, {

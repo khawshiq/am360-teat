@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
-import { json, fail, nowIso } from "@/lib/api";
+import { json, fail, nowIso, configError } from "@/lib/api";
 import { getPlanForAcademy } from "@/lib/plan";
 import { audit } from "@/lib/audit";
 import { resolveTenantOrSuperActor } from "@/lib/tenantOrSuperAuth";
@@ -37,7 +37,16 @@ export async function POST(req: Request) {
 
   // Per-academy WhatsApp credentials — never a global token. Fails fast with
   // "connect first" / "reconnect" before we even look at recipients.
-  const credentials = await whatsappIntegrationService.getCredentials(academy_id);
+  let credentials;
+  try {
+    credentials = await whatsappIntegrationService.getCredentials(academy_id);
+  } catch (e) {
+    // Decrypting the stored token can fail on a missing/rotated ENCRYPTION_KEY — say so
+    // instead of 500-ing halfway into a broadcast the admin thinks is sending.
+    const r2 = configError(e);
+    if (r2) return r2;
+    throw e;
+  }
   if (!credentials.ok) return fail(400, credentials.error);
 
   // Never trust branchId alone — it must belong to the target academy.
