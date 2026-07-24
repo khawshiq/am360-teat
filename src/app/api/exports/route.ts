@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth, fail, todayStr, trainerBranchIds, planError } from "@/lib/api";
 import { assertFeature } from "@/lib/plan";
 import { anchoredDueDate, feeStatusFor } from "@/lib/fees";
+import { accrueFeesSafely } from "@/lib/billing";
 import { fmtDay, fmtMonth } from "@/lib/date";
 import { buildXlsx, type Column } from "@/lib/xlsx";
 import { buildPdf } from "@/lib/pdf";
@@ -110,6 +111,11 @@ export async function GET(req: Request) {
   }
 
   if (type === "fees") {
+    // Accrue first, so a downloaded fee sheet matches the fees tab and the dashboard rather
+    // than being one month short of both. Idempotent — see src/lib/billing.ts.
+    // todayStr(), NOT `date` — that one is a caller-supplied query param (the attendance
+    // export's day), and feeding it in would let ?date=2028-01-01 raise years of fees.
+    await accrueFeesSafely(u.academy_id, todayStr());
     const students = await prisma.student.findMany({
       where: { academy_id: u.academy_id, ...branchFilter },
       select: { id: true, name: true, branch_id: true, admission_date: true, join_date: true },
