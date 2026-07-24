@@ -83,14 +83,20 @@ export default function Dashboard() {
         const list = d.birthdays_today || [];
         const upcoming = d.birthdays_upcoming || [];
         const has = list.length > 0;
+        // A solid teal card, the same --g-cyan gradient the Branches tile uses, with white
+        // text throughout. The inner rows go translucent-white and float on the gradient
+        // instead of being white cards, so the whole box reads as one coloured surface.
+        // Muted lines become translucent white (--soft) rather than the grey --muted, which
+        // would vanish on teal.
+        const soft = "rgba(255,255,255,0.82)";
+        const rowBg = "rgba(255,255,255,0.12)";
+        const rowBorder = "1px solid rgba(255,255,255,0.20)";
         return (
-          // A plain white card, matching the Branch overview box below — the birthday hue
-          // stays on the row icons and the count badge, not the card background.
-          <div className="card">
+          <div className="card" style={{ background: "var(--g-cyan)", border: "none", color: "#fff" }}>
             <div className="section-head">
               <div>
-                <span className="section-title">🎂 Student birthdays</span>
-                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                <span className="section-title" style={{ color: "#fff" }}>🎂 Student birthdays</span>
+                <div style={{ fontSize: 12.5, marginTop: 2, color: soft }}>
                   {!has
                     ? "No student has a birthday today."
                     : d.birthday_wishes_sent > 0
@@ -98,22 +104,29 @@ export default function Dashboard() {
                       : "Automatic wishes are off — turn them on under Notifications."}
                 </div>
               </div>
-              {has && <span className="badge brand">{list.length} today</span>}
+              {has && (
+                <span className="badge" style={{ color: "#fff", background: rowBg, border: rowBorder }}>
+                  {list.length} today
+                </span>
+              )}
             </div>
 
             {list.map((s: any) => (
-              <div className="list-item" key={s.id}>
+              <div className="list-item" key={s.id} style={{ background: rowBg, border: rowBorder, boxShadow: "none", color: "#fff" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                  <span className="row-ico t-magenta" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                  <span aria-hidden="true" style={{
+                    display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 9,
+                    background: "rgba(255,255,255,0.18)", color: "#fff", flexShrink: 0,
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
                          strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4 21h16v-7H4z" /><path d="M4 14a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
                       <path d="M12 12V8" /><path d="M12 5.5V5" />
                     </svg>
                   </span>
-                  <span style={{ fontWeight: 600 }}>{s.name}</span>
+                  <span style={{ fontWeight: 600, color: "#fff" }}>{s.name}</span>
                 </div>
-                <span className="row-stat">{s.dob ? `born ${fmtDay(s.dob)}` : ""}</span>
+                <span style={{ color: soft, fontSize: 13 }}>{s.dob ? `born ${fmtDay(s.dob)}` : ""}</span>
               </div>
             ))}
 
@@ -123,14 +136,14 @@ export default function Dashboard() {
                 birth year. */}
             {upcoming.length > 0 && (
               <>
-                <div className="muted" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 0.4, margin: `${has ? 14 : 6}px 0 2px` }}>
+                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 0.4, margin: `${has ? 14 : 6}px 0 6px`, color: soft }}>
                   Coming up this week
                 </div>
                 {upcoming.map((s: any) => (
-                  <div className="list-item" key={s.id}>
-                    <span style={{ fontWeight: 500 }}>{s.name}</span>
-                    <span className="row-stat">
-                      {fmtDay(s.date)} · <b>{s.in_days === 1 ? "tomorrow" : `in ${s.in_days} days`}</b>
+                  <div className="list-item" key={s.id} style={{ background: rowBg, border: rowBorder, boxShadow: "none", color: "#fff" }}>
+                    <span style={{ fontWeight: 500, color: "#fff" }}>{s.name}</span>
+                    <span style={{ color: soft, fontSize: 13 }}>
+                      {fmtDay(s.date)} · <b style={{ color: "#fff" }}>{s.in_days === 1 ? "tomorrow" : `in ${s.in_days} days`}</b>
                     </span>
                   </div>
                 ))}
@@ -138,7 +151,7 @@ export default function Dashboard() {
             )}
 
             {!has && upcoming.length === 0 && (
-              <p className="muted" style={{ fontSize: 13, margin: "6px 0 0" }}>No birthdays in the next 7 days.</p>
+              <p style={{ fontSize: 13, margin: "6px 0 0", color: soft }}>No birthdays in the next 7 days.</p>
             )}
           </div>
         );
