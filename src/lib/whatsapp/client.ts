@@ -13,6 +13,18 @@ function isAuthError(status: number, code: unknown) {
   return status === 401 || code === 190;
 }
 
+// Meta's message alone doesn't always say WHICH field is wrong ("Unsupported get
+// request" is the same text whether the Phone Number ID is a typo or belongs to
+// another app), so keep the numeric code/subcode with it — that pair is what an admin
+// can look up, and what tells apart a 24-hour test token from a revoked one.
+function metaError(data: any, status: number): string {
+  const e = data?.error;
+  const msg = e?.message || `Request failed (${status})`;
+  const codes = [e?.code && `code ${e.code}`, e?.error_subcode && `subcode ${e.error_subcode}`]
+    .filter(Boolean).join(", ");
+  return codes ? `${msg} (${codes})` : msg;
+}
+
 export async function sendWhatsAppMessage(phoneNumberId: string, accessToken: string, to: string, bodyText: string): Promise<WhatsAppSendResult> {
   try {
     const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`, {
@@ -29,7 +41,7 @@ export async function sendWhatsAppMessage(phoneNumberId: string, accessToken: st
     const data = await res.json().catch(() => null);
     return {
       ok: false,
-      error: data?.error?.message || `WhatsApp send failed (${res.status})`,
+      error: metaError(data, res.status),
       authError: isAuthError(res.status, data?.error?.code),
     };
   } catch (e: any) {
@@ -54,7 +66,7 @@ export async function fetchPhoneNumberInfo(phoneNumberId: string, accessToken: s
     if (!res.ok) {
       return {
         ok: false,
-        error: data?.error?.message || `Request failed (${res.status})`,
+        error: metaError(data, res.status),
         authError: isAuthError(res.status, data?.error?.code),
       };
     }
