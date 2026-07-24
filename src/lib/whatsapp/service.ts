@@ -98,7 +98,16 @@ export class WhatsAppIntegrationService {
     const now = nowIso();
     if (!result.ok) {
       await repo.updateStatus(academy_id, { status: result.authError ? "expired" : "invalid", updated_at: now });
-      return { ok: false as const, error: result.authError ? EXPIRED : result.error };
+      // Report what META said, not our canned status string. EXPIRED/INVALID are written
+      // for the SEND path, where all we have is a stored status and there is no live
+      // reason to quote. "Test connection" exists precisely to get that reason — swapping
+      // it for "Please reconnect." tells an admin to redo the exact thing that just
+      // failed, which is how a bad 24-hour token reads identically to a revoked one.
+      return {
+        ok: false as const,
+        error: `WhatsApp rejected these credentials — ${result.error}`,
+        authError: !!result.authError,
+      };
     }
     await repo.updateStatus(academy_id, {
       status: "connected",
