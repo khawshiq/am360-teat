@@ -299,6 +299,42 @@ model WhatsAppIntegration {
   updated_at           String
 }
 
+// Per-academy settings for automatic birthday wishes. One row per academy
+// (academy_id @unique), created on first save. `enabled` defaults to FALSE on purpose:
+// this feature messages real people without anyone pressing send, so it is strictly
+// opt-in. `message` is a template with {name} / {academy} placeholders.
+model BirthdayGreeting {
+  id             String  @id @default(uuid())
+  academy_id     String  @unique
+  enabled        Boolean @default(false)
+  recipient_type String  @default("BOTH")               // PARENTS | STUDENTS | BOTH
+  message        String  @default("")
+  last_run_date  String?                                 // YYYY-MM-DD of the last run
+  created_at     String
+  updated_at     String
+}
+
+// One row per (student, day, phone) that a birthday wish was attempted for. This table
+// IS the idempotency guard, which is why the unique index is on the natural key and not
+// on `id`: the row is claimed BEFORE the message goes out, so a retry, a double cron
+// fire, or a dashboard load racing the cron all collide here instead of wishing someone
+// a happy birthday four times. A failed send stays failed rather than being retried —
+// double-messaging a customer is worse than missing one.
+model BirthdayWish {
+  id         String @id @default(uuid())
+  academy_id String
+  student_id String
+  date       String                                      // YYYY-MM-DD the wish was for
+  phone      String                                      // E.164, as sent
+  status     String @default("sent")                     // sending | sent | failed
+  run_id     String @default("")                         // which run owns this claim
+  error      String @default("")
+  created_at String
+
+  @@unique([student_id, date, phone])
+  @@index([academy_id, date])
+}
+
 // Password reset. We store only the SHA-256 hash of the emailed token, never the
 // raw value, and expire it after ~1 hour. One-time use (marked `used`).
 model PasswordResetToken {
