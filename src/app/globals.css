@@ -1086,3 +1086,39 @@ button.btn-outline:hover:not(:disabled) {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   Public legal pages (/privacy-policy, /terms, /data-deletion).
+   A reading column, not an app screen: these are long prose documents that a
+   Meta reviewer and the occasional parent will actually read top to bottom, so
+   they get a measure (~72ch) and generous leading rather than the dense
+   information rhythm the console uses. No new colours — body text, --muted for
+   the metadata, and the existing --accent2 for links.
+   --------------------------------------------------------------------------- */
+.legal-wrap { max-width: 820px; margin: 0 auto; padding: var(--s7) var(--pad-x) var(--s8); }
+.legal-head { display: grid; gap: var(--s2); justify-items: start; margin-bottom: var(--s5); }
+.legal-title { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: var(--s3); }
+.legal-body { line-height: 1.65; font-size: 14.5px; max-width: 72ch; }
+.legal-body h2 {
+  font-size: 16px; font-weight: 650; letter-spacing: -0.01em;
+  margin: var(--s6) 0 var(--s2); padding-top: var(--s3);
+  border-top: 1px solid var(--border-soft);
+}
+.legal-body h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.legal-body p { margin-bottom: var(--s3); }
+.legal-body ul { margin: 0 0 var(--s3) var(--s5); }
+.legal-body li { margin-bottom: var(--s2); }
+.legal-body a { color: var(--accent2); }
+.legal-body strong { font-weight: 650; }
+.legal-foot {
+  display: flex; flex-wrap: wrap; gap: var(--s2);
+  justify-content: center; align-items: center;
+  margin-top: var(--s5); font-size: 13px;
+}
+.legal-foot a { color: var(--muted); }
+.legal-foot a:hover { color: var(--accent2); }
+
+@media (max-width: 640px) {
+  .legal-wrap { padding: var(--s5) var(--s4) var(--s7); }
+  .legal-title { font-size: 22px; }
+}
