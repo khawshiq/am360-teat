@@ -13,13 +13,28 @@ function isAuthError(status: number, code: unknown) {
   return status === 401 || code === 190;
 }
 
+// Meta quotes the offending credential back inside its own error text — "Malformed
+// access token EAAZAWnx…" — so relaying its message unedited would print a live token
+// into the admin's browser, the red error box, the 400 response body, and anything
+// downstream that captures either. Strip token-shaped runs before the message escapes
+// this module. Nothing that reaches a caller is allowed to carry the secret.
+function redactSecrets(msg: string, accessToken?: string): string {
+  const out = accessToken && accessToken.length >= 8 ? msg.split(accessToken).join("<token>") : msg;
+  // Also catch a token Meta returned in a form we can't string-match (truncated, or a
+  // second copy from a double-paste): Meta tokens start EAA, and no legitimate word in
+  // an error message is a 40+ character unbroken credential-shaped run.
+  return out
+    .replace(/\bEAA[A-Za-z0-9_-]{10,}/g, "<token>")
+    .replace(/\b[A-Za-z0-9_-]{40,}\b/g, "<token>");
+}
+
 // Meta's message alone doesn't always say WHICH field is wrong ("Unsupported get
 // request" is the same text whether the Phone Number ID is a typo or belongs to
 // another app), so keep the numeric code/subcode with it — that pair is what an admin
 // can look up, and what tells apart a 24-hour test token from a revoked one.
-function metaError(data: any, status: number): string {
+function metaError(data: any, status: number, accessToken?: string): string {
   const e = data?.error;
-  const msg = e?.message || `Request failed (${status})`;
+  const msg = redactSecrets(e?.message || `Request failed (${status})`, accessToken);
   const codes = [e?.code && `code ${e.code}`, e?.error_subcode && `subcode ${e.error_subcode}`]
     .filter(Boolean).join(", ");
   return codes ? `${msg} (${codes})` : msg;
@@ -41,11 +56,11 @@ export async function sendWhatsAppMessage(phoneNumberId: string, accessToken: st
     const data = await res.json().catch(() => null);
     return {
       ok: false,
-      error: metaError(data, res.status),
+      error: metaError(data, res.status, accessToken),
       authError: isAuthError(res.status, data?.error?.code),
     };
   } catch (e: any) {
-    return { ok: false, error: e?.message || "WhatsApp send failed" };
+    return { ok: false, error: redactSecrets(e?.message || "WhatsApp send failed", accessToken) };
   }
 }
 
@@ -66,12 +81,12 @@ export async function fetchPhoneNumberInfo(phoneNumberId: string, accessToken: s
     if (!res.ok) {
       return {
         ok: false,
-        error: metaError(data, res.status),
+        error: metaError(data, res.status, accessToken),
         authError: isAuthError(res.status, data?.error?.code),
       };
     }
     return { ok: true, data };
   } catch (e: any) {
-    return { ok: false, error: e?.message || "Request failed" };
+    return { ok: false, error: redactSecrets(e?.message || "Request failed", accessToken) };
   }
 }
