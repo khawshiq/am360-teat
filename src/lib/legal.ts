@@ -5,7 +5,7 @@
 //
 // ⚠️ CHANGE THIS to the address you want the public (and Meta) to write to. It appears
 // on /privacy-policy, /terms and /data-deletion.
-export const LEGAL_CONTACT_EMAIL = "shaiknissarinfo@gmail.com";
+export const LEGAL_CONTACT_EMAIL = "aashiq4cinemas@gmail.com";
 
 export const LEGAL_SERVICE_NAME = "AM 360";
 
