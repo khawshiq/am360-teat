@@ -95,6 +95,42 @@ export async function birthdaysOn(academy_id: string, day = todayStr(), branch_i
 
 const isLeapYear = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
+// The next `days` days AFTER `from` (today excluded — that is the "birthdays today" list),
+// each active student whose birthday falls in that window, tagged with how many days off it
+// is and the calendar date it lands on. Matched on month+day so it wraps a month or year
+// boundary for free: 30 Dec + 7 days reaches into January without any special-casing.
+//
+// A 29 Feb birthday shows on 28 Feb in a common year, matching how the wish itself folds —
+// the person is greeted the same day they'd be messaged, not on a date that doesn't exist.
+export async function upcomingBirthdays(academy_id: string, from = todayStr(), days = 7, branch_id?: string) {
+  const students = await prisma.student.findMany({
+    where: { academy_id, status: "active", ...(branch_id ? { branch_id } : {}) },
+    select: { id: true, name: true, dob: true, branch_id: true, photo_url: true },
+  });
+
+  const base = new Date(`${from}T00:00:00Z`);
+  // md -> { in_days, date } for each of the next `days` calendar days.
+  const window = new Map<string, { in_days: number; date: string }>();
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(base.getTime() + i * 864e5);
+    const iso = d.toISOString().slice(0, 10);
+    let md = iso.slice(5, 10);
+    // A 29 Feb that isn't in this window's year shows on the 28th, same fold as the wish.
+    if (md === "02-28" && !isLeapYear(d.getUTCFullYear()) && !window.has("02-29"))
+      window.set("02-29", { in_days: i, date: iso });
+    if (!window.has(md)) window.set(md, { in_days: i, date: iso });
+  }
+
+  const out: { id: string; name: string; dob: string; branch_id: string; photo_url: string | null; in_days: number; date: string }[] = [];
+  for (const s of students) {
+    if (!isDay(s.dob)) continue;
+    const hit = window.get(s.dob.slice(5, 10));
+    if (!hit) continue;
+    out.push({ id: s.id, name: s.name, dob: s.dob!, branch_id: s.branch_id, photo_url: s.photo_url, ...hit });
+  }
+  return out.sort((a, b) => a.in_days - b.in_days || a.name.localeCompare(b.name));
+}
+
 export type BirthdayRunResult = {
   ran: boolean;
   reason?: string;

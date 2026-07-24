@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { adminAuth, json, todayStr } from "@/lib/api";
 import { feeStatusFor } from "@/lib/fees";
 import { accrueFeesSafely } from "@/lib/billing";
-import { birthdaysOn, runBirthdayGreetingsSafely } from "@/lib/birthdays";
+import { birthdaysOn, upcomingBirthdays, runBirthdayGreetingsSafely } from "@/lib/birthdays";
 
 export async function GET(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
@@ -71,12 +71,17 @@ export async function GET(req: Request) {
   // opt-in and idempotent (src/lib/birthdays.ts), and runs here as well as from the cron
   // so a deployment with no cron configured still sends.
   const wishes = await runBirthdayGreetingsSafely(aid, today);
-  const birthday_students = (await birthdaysOn(aid, today)).map((s: any) => ({
+  const [birthdaysToday, birthdaysUpcoming] = await Promise.all([
+    birthdaysOn(aid, today),
+    upcomingBirthdays(aid, today, 7),
+  ]);
+  const birthday_students = birthdaysToday.map((s: any) => ({
     id: s.id, name: s.name, dob: s.dob, branch_id: s.branch_id, photo_url: s.photo_url,
   }));
 
   return json({
     birthdays_today: birthday_students,
+    birthdays_upcoming: birthdaysUpcoming,
     birthday_wishes_sent: wishes.sent,
     total_students, total_trainers, total_branches: branches.length, classes_today, branch_stats,
     attendance_rate_today, present_today, marked_today: todayRecs.length,
