@@ -267,14 +267,46 @@ model NotificationLog {
   recipient_type   String                                // PARENTS | STUDENTS | BOTH
   message          String
   total_recipients Int     @default(0)
-  success_count    Int     @default(0)
-  failed_count     Int     @default(0)
+  // success_count / failed_count are what META ANSWERED AT SEND TIME — a 200 from the
+  // Cloud API means "accepted for delivery", nothing more. The two counters below are
+  // the truth, and they only arrive later on the webhook. They are deliberately separate:
+  // collapsing them would make "11 ok" look like proof of delivery, which is exactly the
+  // misreading that sent someone hunting for a bug that was never in this code.
+  success_count    Int     @default(0)                   // accepted by Meta
+  failed_count     Int     @default(0)                   // rejected by Meta, synchronously
+  delivered_count  Int     @default(0)                   // confirmed on the recipient's phone
+  undelivered_count Int    @default(0)                   // Meta gave up after accepting
   created_by       String
   created_at       String
   status           String  @default("completed")         // completed | partial | failed
 
   @@index([academy_id, created_at])
   @@index([academy_id, branch_id])
+}
+
+// One row per message handed to Meta, keyed by the `wamid` Meta returns on acceptance.
+// This table exists solely so a delivery receipt has something to attach to: the Cloud
+// API reports the real outcome (sent → delivered → read, or failed) only asynchronously,
+// on the webhook, identifying the message by that id and nothing else. Without this row
+// "accepted" can never become "delivered", and an undelivered message is indistinguishable
+// from a delivered one — which is precisely the state this app was in before.
+//
+// `notification_id` is null for automatic birthday wishes, which have no broadcast row.
+model WhatsAppMessage {
+  id              String  @id @default(uuid())
+  academy_id      String
+  notification_id String?                                 // NotificationLog.id, null for birthday wishes
+  student_id      String?
+  phone           String
+  wamid           String? @unique                         // Meta's id — the only handle a webhook has
+  status          String  @default("accepted")            // accepted | sent | delivered | read | failed
+  error_code      String  @default("")                    // Meta's numeric code, e.g. 131026
+  error_detail    String  @default("")
+  created_at      String
+  updated_at      String
+
+  @@index([academy_id, created_at])
+  @@index([notification_id])
 }
 
 // Per-academy WhatsApp Business Cloud API credentials. One row per academy

@@ -51,21 +51,41 @@ export type BroadcastCredentials = { phoneNumberId: string; accessToken: string 
 // `authError` comes back true if any send failed because the academy's own token was
 // rejected by Meta — the caller marks the integration expired so the NEXT send fails
 // fast with "reconnect" instead of quietly failing every recipient again.
+/** What Meta answered for one recipient, kept per-recipient so the caller can persist the
+ *  wamid. A `wamid` is the only thing a later delivery receipt can be matched against. */
+export type BroadcastResult = {
+  student_id: string;
+  phone: string;
+  ok: boolean;
+  wamid?: string;
+  /** Meta's own word: "accepted", or "held_for_quality_assessment" (parked, may never send). */
+  messageStatus?: string;
+  error?: string;
+};
+
 export async function sendBroadcast(recipients: Recipient[], message: string, credentials: BroadcastCredentials) {
   let successCount = 0;
   let failedCount = 0;
   let authError = false;
   const failedNumbers: string[] = [];
+  const results: BroadcastResult[] = [];
   let next = 0;
   async function worker() {
     while (next < recipients.length) {
       const r = recipients[next++];
       let result = await sendWhatsAppMessage(credentials.phoneNumberId, credentials.accessToken, r.phone, message);
       if (!result.ok) result = await sendWhatsAppMessage(credentials.phoneNumberId, credentials.accessToken, r.phone, message);
-      if (result.ok) successCount++;
-      else {
+      if (result.ok) {
+        successCount++;
+        results.push({ student_id: r.student_id, phone: r.phone, ok: true, wamid: result.wamid, messageStatus: result.messageStatus });
+        // Meta accepted the message but parked it — it may never reach anyone. Loud in the
+        // logs because it is otherwise indistinguishable from a normal send.
+        if (result.messageStatus && result.messageStatus !== "accepted")
+          console.warn(`[whatsapp] ${r.phone} accepted with status "${result.messageStatus}" — not necessarily delivered`);
+      } else {
         failedCount++;
         failedNumbers.push(r.phone);
+        results.push({ student_id: r.student_id, phone: r.phone, ok: false, error: result.error });
         if (result.authError) authError = true;
         console.error(`[whatsapp] send failed to ${r.phone}: ${result.error}`);
       }
@@ -73,5 +93,5 @@ export async function sendBroadcast(recipients: Recipient[], message: string, cr
   }
   const workers = Array.from({ length: Math.min(CONCURRENCY, recipients.length) }, worker);
   await Promise.all(workers);
-  return { successCount, failedCount, failedNumbers, authError };
+  return { successCount, failedCount, failedNumbers, authError, results };
 }

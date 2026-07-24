@@ -5,7 +5,11 @@
 const GRAPH_VERSION = "v23.0";
 
 export type WhatsAppSendResult =
-  | { ok: true }
+  // `wamid` is Meta's message id and the ONLY handle by which a later delivery receipt
+  // identifies this message — drop it and the webhook has nothing to match on.
+  // `messageStatus` is Meta's own word for what it did: normally "accepted", but
+  // "held_for_quality_assessment" means the message is parked and may never be sent.
+  | { ok: true; wamid?: string; messageStatus?: string }
   | { ok: false; error: string; authError?: boolean };
 
 function isAuthError(status: number, code: unknown) {
@@ -52,8 +56,11 @@ export async function sendWhatsAppMessage(phoneNumberId: string, accessToken: st
         text: { preview_url: false, body: bodyText },
       }),
     });
-    if (res.ok) return { ok: true };
     const data = await res.json().catch(() => null);
+    if (res.ok) {
+      const m = data?.messages?.[0];
+      return { ok: true, wamid: m?.id, messageStatus: m?.message_status };
+    }
     return {
       ok: false,
       error: metaError(data, res.status, accessToken),

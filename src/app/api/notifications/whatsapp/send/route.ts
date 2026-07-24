@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   const recipients = await collectRecipients(academy_id, branchId, recipientType as RecipientType);
   if (!recipients.length) return fail(400, "No valid WhatsApp recipients found.");
 
-  const { successCount, failedCount, failedNumbers, authError } = await sendBroadcast(recipients, message, credentials);
+  const { successCount, failedCount, failedNumbers, authError, results } = await sendBroadcast(recipients, message, credentials);
   if (authError) await whatsappIntegrationService.markExpired(academy_id);
   const status = failedCount === 0 ? "completed" : successCount === 0 ? "failed" : "partial";
 
@@ -72,6 +72,26 @@ export async function POST(req: Request) {
     created_at: nowIso(),
     status,
   } });
+
+  // One row per message, carrying Meta's wamid. The webhook has no other way to find the
+  // message a delivery receipt refers to, so skipping this makes every send permanently
+  // unverifiable. Failures are stored too — a row that never got a wamid is itself the
+  // record that Meta refused it.
+  const sentAt = nowIso();
+  await prisma.whatsAppMessage.createMany({
+    data: results.map(r => ({
+      academy_id,
+      notification_id: log.id,
+      student_id: r.student_id,
+      phone: r.phone,
+      wamid: r.wamid || null,
+      status: r.ok ? (r.messageStatus === "held_for_quality_assessment" ? "held" : "accepted") : "failed",
+      error_detail: (r.error || "").slice(0, 300),
+      created_at: sentAt,
+      updated_at: sentAt,
+    })),
+    skipDuplicates: true, // wamid is unique; a Meta retry must not collide
+  }).catch(e => console.error("[whatsapp] could not record message rows:", e?.message));
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "";
   // audit() reads actor.academy_id — set it here rather than threading it through the
