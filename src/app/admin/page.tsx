@@ -84,7 +84,15 @@ export default function Dashboard() {
         const upcoming = d.birthdays_upcoming || [];
         const has = list.length > 0;
         return (
-          <div className="card">
+          // A soft magenta wash + a magenta left edge, so the box reads as its own thing
+          // at a glance rather than as one more white card. Magenta is already the birthday
+          // identity hue (the row icons use it); this is that same hue at ~7% over white, so
+          // the text on top keeps its contrast. Not a status colour — it means "birthday",
+          // consistently, so it doesn't collide with the red/amber/green state palette.
+          <div className="card" style={{
+            borderLeft: "3px solid var(--c-magenta)",
+            background: "linear-gradient(180deg, rgba(190, 24, 93, 0.07), rgba(190, 24, 93, 0.02))",
+          }}>
             <div className="section-head">
               <div>
                 <span className="section-title">🎂 Student birthdays</span>
