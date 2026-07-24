@@ -209,6 +209,10 @@ export async function runBirthdayGreetings(academy_id: string, day = todayStr())
 
   const nameOf = new Map(students.map(s => [s.id, s.name]));
   let sent = 0, failed = 0, authError = false;
+  // Same reason as a broadcast: a wamid is the only handle the delivery webhook has. A
+  // wish that Meta accepts and then drops would otherwise read as "sent" forever — and
+  // these go out with nobody watching, so silent non-delivery is the whole risk.
+  const messageRows: any[] = [];
   for (const c of claimed) {
     const message = renderBirthdayMessage(settings.message, {
       name: nameOf.get(c.student_id) || "there",
@@ -222,11 +226,19 @@ export async function runBirthdayGreetings(academy_id: string, day = todayStr())
       if (res.authError) authError = true;
       console.error(`[birthdays] send failed to ${c.phone}: ${error}`);
     }
+    messageRows.push({
+      academy_id, notification_id: null, student_id: c.student_id, phone: c.phone,
+      wamid: (res.ok && res.wamid) || null,
+      status: res.ok ? (res.messageStatus === "held_for_quality_assessment" ? "held" : "accepted") : "failed",
+      error_detail: error.slice(0, 300), created_at, updated_at: created_at,
+    });
     await prisma.birthdayWish.update({
       where: { id: c.id },
       data: { status: res.ok ? "sent" : "failed", error },
     }).catch(() => {});
   }
+  if (messageRows.length)
+    await prisma.whatsAppMessage.createMany({ data: messageRows, skipDuplicates: true }).catch(() => {});
   // Meta rejected the academy's token mid-run — flip the integration so the next attempt
   // fails fast with "reconnect" instead of silently failing every recipient again.
   if (authError) await whatsappIntegrationService.markExpired(academy_id).catch(() => {});

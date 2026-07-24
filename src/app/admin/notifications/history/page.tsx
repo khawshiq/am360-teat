@@ -43,11 +43,22 @@ export default function NotificationHistory() {
             <div><b>{n.branch_name}</b> <span className="muted" style={{ fontSize: 13 }}>· {RECIPIENT_LABELS[n.recipient_type] || n.recipient_type}</span></div>
             <div className="muted" style={{ fontSize: 13 }}>{n.message}</div>
             <div className="muted" style={{ fontSize: 12.5 }}>{n.created_by} · {n.created_at.replace("T", " ").slice(0, 16)}</div>
+            {/* Meta's own reason, so a failure is actionable instead of just a count. */}
+            {n.failure_reasons?.length > 0 && (
+              <div style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 2 }}>
+                {n.failure_reasons.join(" · ")}
+              </div>
+            )}
           </div>
           <div className="row" style={{ gap: 14, alignItems: "center" }}>
             <span className="muted" style={{ fontSize: 13 }}>{n.total_recipients} sent</span>
-            <span style={{ color: "var(--ok)", fontSize: 13 }}>{n.success_count} ok</span>
-            {n.failed_count > 0 && <span style={{ color: "var(--danger)", fontSize: 13 }}>{n.failed_count} failed</span>}
+            {/* "accepted", never "ok" — Meta returning 200 is not delivery, and the old
+                wording read as proof that a message had arrived. */}
+            <span className="muted" style={{ fontSize: 13 }}>{n.success_count} accepted</span>
+            {n.delivered_count > 0 && <span style={{ color: "var(--ok)", fontSize: 13 }}>{n.delivered_count} delivered</span>}
+            {n.awaiting_count > 0 && <span style={{ color: "var(--warn)", fontSize: 13 }} title="Accepted by Meta, no delivery receipt yet">{n.awaiting_count} awaiting</span>}
+            {(n.failed_count + n.undelivered_count) > 0 &&
+              <span style={{ color: "var(--danger)", fontSize: 13 }}>{n.failed_count + n.undelivered_count} failed</span>}
             <span className={`badge ${STATUS_BADGE[n.status] || ""}`}>{n.status}</span>
           </div>
         </div>
