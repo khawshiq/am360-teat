@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUser } from "./auth";
 import { PlanLimitError, PlanFeatureError } from "./plan";
+import { EncryptionConfigError, DecryptFailedError } from "./crypto";
 
 export const json = (data: any, status = 200) => NextResponse.json(data, { status });
 export const fail = (status: number, detail: string) =>
@@ -24,6 +25,21 @@ export function planError(e: any): NextResponse | null {
       { detail: e.message, code: "PLAN_LIMIT", feature: e.feature },
       { status: 402 },
     );
+  return null;
+}
+
+// Sibling of planError, for deployment/config faults instead of paywalls. Next turns an
+// uncaught throw into a bodyless 500, which the client renders as "Request failed (500)"
+// — true, and useless: the admin cannot tell a missing env var from a missing table.
+// These messages name the thing to fix and never contain a secret or a stack trace.
+// Usage:  catch (e) { const r = configError(e); if (r) return r; throw e; }
+export function configError(e: any): NextResponse | null {
+  if (e instanceof EncryptionConfigError) return fail(500, e.message);
+  if (e instanceof DecryptFailedError) return fail(400, e.message); // fixable by reconnecting
+  // Prisma: table does not exist. The schema is deployed with `db push` (see ops.md),
+  // so this means the last build didn't run it — the fix is a redeploy, not code.
+  if (e?.code === "P2021")
+    return fail(500, "This feature's database table is missing. Redeploy so `prisma db push` runs against DATABASE_URL.");
   return null;
 }
 

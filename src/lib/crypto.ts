@@ -6,12 +6,34 @@ import crypto from "crypto";
 // silently storing plaintext.
 const ALGORITHM = "aes-256-gcm";
 
+// Thrown when the SERVER is misconfigured (key missing / wrong shape). Routes map it
+// through `configError()` (src/lib/api.ts) to a 500 whose body names the env var to
+// fix — an unset key used to surface as a bare "Request failed (500)" on the Connect
+// form, which is unactionable.
+export class EncryptionConfigError extends Error {}
+
+// Thrown when the key is valid but the stored ciphertext cannot be opened with it —
+// in practice, ENCRYPTION_KEY was rotated after the credentials were saved. The fix
+// is a user action (reconnect), not an env change, so it maps to a 400.
+export class DecryptFailedError extends Error {}
+
+const ROTATED =
+  "Your saved WhatsApp credentials could not be read — the server's encryption key changed after they were saved. Use Update credentials to enter the access token again.";
+
 function getKey(): Buffer {
-  const key = process.env.ENCRYPTION_KEY;
-  if (!key) throw new Error("ENCRYPTION_KEY is not set");
-  const buf = Buffer.from(key, "hex");
-  if (buf.length !== 32) throw new Error("ENCRYPTION_KEY must be a 32-byte hex string (64 hex chars) — generate with `openssl rand -hex 32`");
-  return buf;
+  // Values pasted into the Vercel dashboard routinely arrive wrapped in the quotes
+  // copied from .env.example, or with a trailing newline — both make an otherwise
+  // correct key fail the length check below, so strip them before decoding.
+  const key = (process.env.ENCRYPTION_KEY || "").trim().replace(/^["']|["']$/g, "");
+  if (!key)
+    throw new EncryptionConfigError(
+      "Server encryption is not configured: ENCRYPTION_KEY is missing. Add it in Vercel → Settings → Environment Variables (64 hex characters, from `openssl rand -hex 32`) and redeploy.",
+    );
+  if (!/^[0-9a-fA-F]{64}$/.test(key))
+    throw new EncryptionConfigError(
+      `Server encryption is misconfigured: ENCRYPTION_KEY must be exactly 64 hex characters (got ${key.length}). Generate one with \`openssl rand -hex 32\`, set it in Vercel, and redeploy.`,
+    );
+  return Buffer.from(key, "hex");
 }
 
 // Stored as "iv:authTag:ciphertext", all hex, one random IV per call.
@@ -24,9 +46,15 @@ export function encrypt(plaintext: string): string {
 }
 
 export function decrypt(payload: string): string {
+  const key = getKey(); // outside the try — a config problem must not read as a rotation
   const [ivHex, tagHex, dataHex] = payload.split(":");
-  if (!ivHex || !tagHex || !dataHex) throw new Error("Malformed encrypted payload");
-  const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), Buffer.from(ivHex, "hex"));
-  decipher.setAuthTag(Buffer.from(tagHex, "hex"));
-  return Buffer.concat([decipher.update(Buffer.from(dataHex, "hex")), decipher.final()]).toString("utf8");
+  if (!ivHex || !tagHex || !dataHex) throw new DecryptFailedError(ROTATED);
+  try {
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+    return Buffer.concat([decipher.update(Buffer.from(dataHex, "hex")), decipher.final()]).toString("utf8");
+  } catch {
+    // GCM auth-tag mismatch — right format, wrong key.
+    throw new DecryptFailedError(ROTATED);
+  }
 }
