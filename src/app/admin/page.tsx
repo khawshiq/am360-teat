@@ -74,38 +74,73 @@ export default function Dashboard() {
 
       <Announcements />
 
-      {/* Shown to everyone on every plan — knowing it is someone's birthday costs nothing.
-          Whether a message actually goes out is a separate, opt-in, Pro-gated thing, so the
-          card says which of the two happened rather than implying the wish was sent. */}
-      {d.birthdays_today?.length > 0 && (
-        <div className="card">
-          <div className="section-head">
-            <div>
-              <span className="section-title">🎂 Birthdays today</span>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                {d.birthday_wishes_sent > 0
-                  ? `${d.birthday_wishes_sent} WhatsApp wish${d.birthday_wishes_sent === 1 ? "" : "es"} sent automatically.`
-                  : "Automatic wishes are off — turn them on under Notifications."}
+      {/* A permanent box, on purpose — it is here every day so nobody has to wonder whether
+          the feature is running. Shown to everyone on every plan (knowing it is someone's
+          birthday costs nothing); the *sending* of a wish is a separate, opt-in, Pro-gated
+          thing, so the subtitle says which of the two happened rather than implying a wish
+          went out. Empty days get a one-line calm state, not a hidden card. */}
+      {(() => {
+        const list = d.birthdays_today || [];
+        const upcoming = d.birthdays_upcoming || [];
+        const has = list.length > 0;
+        return (
+          <div className="card">
+            <div className="section-head">
+              <div>
+                <span className="section-title">🎂 Student birthdays</span>
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                  {!has
+                    ? "No student has a birthday today."
+                    : d.birthday_wishes_sent > 0
+                      ? `${d.birthday_wishes_sent} WhatsApp wish${d.birthday_wishes_sent === 1 ? "" : "es"} sent automatically.`
+                      : "Automatic wishes are off — turn them on under Notifications."}
+                </div>
               </div>
+              {has && <span className="badge brand">{list.length} today</span>}
             </div>
+
+            {list.map((s: any) => (
+              <div className="list-item" key={s.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  <span className="row-ico t-magenta" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                         strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 21h16v-7H4z" /><path d="M4 14a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
+                      <path d="M12 12V8" /><path d="M12 5.5V5" />
+                    </svg>
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{s.name}</span>
+                </div>
+                <span className="row-stat">{s.dob ? `born ${fmtDay(s.dob)}` : ""}</span>
+              </div>
+            ))}
+
+            {/* The next 7 days, so the academy can prepare — a card, a mention in class —
+                rather than finding out the morning of. Quieter than today's list: no cake
+                chip, and the lead time ("in 3 days") is the useful number here, not the
+                birth year. */}
+            {upcoming.length > 0 && (
+              <>
+                <div className="muted" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 0.4, margin: `${has ? 14 : 6}px 0 2px` }}>
+                  Coming up this week
+                </div>
+                {upcoming.map((s: any) => (
+                  <div className="list-item" key={s.id}>
+                    <span style={{ fontWeight: 500 }}>{s.name}</span>
+                    <span className="row-stat">
+                      {fmtDay(s.date)} · <b>{s.in_days === 1 ? "tomorrow" : `in ${s.in_days} days`}</b>
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {!has && upcoming.length === 0 && (
+              <p className="muted" style={{ fontSize: 13, margin: "6px 0 0" }}>No birthdays in the next 7 days.</p>
+            )}
           </div>
-          {d.birthdays_today.map((s: any) => (
-            <div className="list-item" key={s.id}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                <span className="row-ico t-magenta" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-                       strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 21h16v-7H4z" /><path d="M4 14a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
-                    <path d="M12 12V8" /><path d="M12 5.5V5" />
-                  </svg>
-                </span>
-                <span style={{ fontWeight: 600 }}>{s.name}</span>
-              </div>
-              <span className="row-stat">{s.dob ? `born ${fmtDay(s.dob)}` : ""}</span>
-            </div>
-          ))}
-        </div>
-      )}
+        );
+      })()}
 
       <div>
         <div className="section-title" style={{ marginBottom: 10 }}>Academy overview</div>
