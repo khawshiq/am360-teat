@@ -77,6 +77,9 @@ export const api = {
   deleteStudent: (id: string) => request(`/students/${id}`, { method: "DELETE" }),
   markAttendance: (b: any) => request("/attendance/mark", { method: "POST", ...body(b) }),
   getAttendance: (bid: string, date: string) => request(`/attendance?branch_id=${bid}&date=${date}`),
+  // One student's month: counts, rate (present+late over *marked* days) and the day list.
+  studentAttendance: (student_id: string, month: string) =>
+    request(`/attendance/student?student_id=${encodeURIComponent(student_id)}&month=${month}`),
   getSession: (bid: string, date: string) => request(`/sessions?branch_id=${bid}&date=${date}`),
   listSchedules: (p: { branch_id?: string; trainer_id?: string } = {}) => {
     const q = new URLSearchParams(); if (p.branch_id) q.set("branch_id", p.branch_id); if (p.trainer_id) q.set("trainer_id", p.trainer_id);
@@ -128,6 +131,10 @@ export const api = {
   sendWhatsApp: (b: { branchId: string; recipientType: "PARENTS" | "STUDENTS" | "BOTH"; message: string; academyId?: string }) =>
     request("/notifications/whatsapp/send", { method: "POST", ...body(b) }),
   listNotificationHistory: (skip = 0, limit = 50) => request(`/notifications/history?skip=${skip}&limit=${limit}`),
+  // --- Automatic birthday wishes ---
+  getBirthdaySettings: () => request("/settings/birthdays"),
+  updateBirthdaySettings: (b: { enabled?: boolean; recipient_type?: string; message?: string }) =>
+    request("/settings/birthdays", { method: "PUT", ...body(b) }),
   // --- WhatsApp Business integration (per-academy, not a global token) ---
   getWhatsAppIntegration: () => request("/settings/whatsapp"),
   connectWhatsApp: (b: { businessAccountId: string; phoneNumberId: string; accessToken: string; verifyToken?: string; webhookSecret?: string }) =>

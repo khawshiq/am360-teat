@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { adminAuth, json, todayStr } from "@/lib/api";
 import { feeStatusFor } from "@/lib/fees";
 import { accrueFeesSafely } from "@/lib/billing";
+import { birthdaysOn, runBirthdayGreetingsSafely } from "@/lib/birthdays";
 
 export async function GET(req: Request) {
   const a = await adminAuth(req); if (a.error) return a.error;
@@ -65,7 +66,18 @@ export async function GET(req: Request) {
     attendance_marks: await prisma.attendance.count({ where: { academy_id: aid, marked_by: t.id, date: { gte: thirty } } }),
   })))).sort((x: any, y: any) => y.attendance_marks - x.attendance_marks).slice(0, 10);
 
+  // Today's birthdays, and the wishes for them. The list is unconditional — knowing it is
+  // someone's birthday costs nothing and works on every plan. The *sending* is gated,
+  // opt-in and idempotent (src/lib/birthdays.ts), and runs here as well as from the cron
+  // so a deployment with no cron configured still sends.
+  const wishes = await runBirthdayGreetingsSafely(aid, today);
+  const birthday_students = (await birthdaysOn(aid, today)).map((s: any) => ({
+    id: s.id, name: s.name, dob: s.dob, branch_id: s.branch_id, photo_url: s.photo_url,
+  }));
+
   return json({
+    birthdays_today: birthday_students,
+    birthday_wishes_sent: wishes.sent,
     total_students, total_trainers, total_branches: branches.length, classes_today, branch_stats,
     attendance_rate_today, present_today, marked_today: todayRecs.length,
     fee_collected, fee_pending, pending_count: pending.length,

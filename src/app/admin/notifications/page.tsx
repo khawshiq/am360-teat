@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import WhatsAppMark from "@/components/WhatsAppMark";
+import BirthdayWishesCard from "@/components/BirthdayWishesCard";
 
 const MAX_LEN = 1000;
 const RECIPIENT_LABELS: Record<string, string> = {
@@ -91,7 +92,8 @@ export default function WhatsAppNotifications() {
         </div>
       </div>
 
-      <div className="card" style={{ alignSelf: "start", borderLeft: "3px solid #25D366" }}>
+      <div style={{ alignSelf: "start", display: "grid", gap: 16 }}>
+      <div className="card" style={{ borderLeft: "3px solid #25D366" }}>
         <div className="row" style={{ gap: 10, alignItems: "center", marginBottom: 2 }}>
           <WhatsAppMark size={30} />
           <div className="section-title" style={{ marginBottom: 0 }}>Preview</div>
@@ -112,6 +114,9 @@ export default function WhatsAppNotifications() {
             </div>
           </div>
         </div>
+      </div>
+
+      <BirthdayWishesCard />
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import Pager, { usePager } from "./Pager";
 import ExportMenu from "./ExportMenu";
 import RowMenu from "./RowMenu";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
+import StudentAttendanceModal from "./StudentAttendanceModal";
 import { upcomingDueDate } from "@/lib/fees";
 import { fmtDay, fmtMonth } from "@/lib/date";
 
@@ -124,6 +125,9 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
     } catch (e: any) { setErr(e.message); }
   };
   const closeStudentModal = () => { setSModalOpen(false); setErr(""); };
+  // Trainers get this too — it is a read of their own students, and "how has this one been
+  // attending" is a question they are asked more often than the admin is.
+  const [attendanceOf, setAttendanceOf] = useState<any>(null);
   const toggleStudentStatus = async (s: any) => {
     try { await api.updateStudent(s.id, { status: s.status === "active" ? "inactive" : "active" }); load(); }
     catch (e: any) { setErr(e.message); }
@@ -284,10 +288,14 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                   <b>{s.name}</b> {s.status !== "active" && <span className="badge inactive">inactive</span>}
                   <div className="muted" style={{ fontSize: 13 }}>{s.phone || "—"} · ₹{s.monthly_fee}/mo{s.batch ? ` · ${s.batch}` : ""}{s.course ? ` · ${s.course}` : ""}</div>
                 </div>
+                <div className="row" style={{ gap: 6 }}>
+                  <button className="secondary" style={{ padding: "4px 10px", minHeight: 0, fontSize: 13 }}
+                          onClick={() => setAttendanceOf(s)}>Attendance</button>
                 {isAdmin && (
                   <RowMenu label={`Actions for ${s.name}`}>
                     {close => (
                       <>
+                        <button className="menu-item" role="menuitem" onClick={() => { setAttendanceOf(s); close(); }}><span>Attendance this month</span></button>
                         <button className="menu-item" role="menuitem" onClick={() => { openEditStudent(s); close(); }}><span>Edit</span></button>
                         <button className="menu-item" role="menuitem" onClick={() => { startTransfer(s); close(); }}><span>Transfer</span></button>
                         <button className="menu-item" role="menuitem" onClick={() => { toggleStudentStatus(s); close(); }}>
@@ -300,6 +308,7 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
                     )}
                   </RowMenu>
                 )}
+                </div>
               </div>
               {transferId === s.id && (
                 <div className="row" style={{ marginTop: 8 }}>
@@ -315,6 +324,8 @@ export default function BranchWorkspace({ branchId, isAdmin }: { branchId: strin
           ))}
           {!students.length && <p className="muted">No students yet.</p>}
           <Pager page={studentsPager.page} setPage={studentsPager.setPage} totalPages={studentsPager.totalPages} />
+
+          {attendanceOf && <StudentAttendanceModal student={attendanceOf} onClose={() => setAttendanceOf(null)} />}
 
           {sModalOpen && (
             <Modal title={sEditId ? "Edit student" : "Add student"} onClose={closeStudentModal}>
